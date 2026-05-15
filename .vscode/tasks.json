@@ -3,18 +3,24 @@
     "tasks": [
         {
             "type": "cppbuild",
-            "label": "Compilar Sniffer con Npcap",
+            "label": "Compilar Sniffer con npcap y gráficos",
             "command": "C:/msys64/ucrt64/bin/g++.exe",
             "args": [
                 "-fdiagnostics-color=always",
                 "-g",
-                "${file}",
-                "-o",
-                "${fileDirname}\\${fileBasenameNoExtension}.exe",
+                "${workspaceFolder}/src/*.cpp",
+                "${workspaceFolder}/imgui/*.cpp",
+                "${workspaceFolder}/imgui/backends/imgui_impl_glfw.cpp",
+                "${workspaceFolder}/imgui/backends/imgui_impl_opengl3.cpp",
+                "-o", "${workspaceFolder}\\sniffer.exe",
                 "-I", "C:/npcap-sdk/Include",
+                "-I", "${workspaceFolder}/imgui",
+                "-I", "${workspaceFolder}/imgui/backends",
                 "-L", "C:/npcap-sdk/Lib/x64",
-                "-lwpcap",
-                "-lPacket"
+                "-lwpcap", "-lPacket",
+                "-lglfw3",     // <-- Librería de GLFW que acabas de instalar
+                "-lgdi32",      // <-- Librería nativa de Windows para gráficos
+                "-lopengl32"    // <-- Librería nativa de Windows para OpenGL
             ],
             "options": {
                 "cwd": "C:/msys64/ucrt64/bin"
