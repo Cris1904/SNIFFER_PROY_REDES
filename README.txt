@@ -40,14 +40,130 @@ Como usas g++ de MSYS2, lo instalaremos directamente mediante su gestor de paque
 4. Reinicia VS Code después de que termine para asegurar que detecte la librería.
 
 ---------------------------------------------------------------------------
-PARTE 3: CÓMO COMPILAR Y EJECUTAR
+PARTE 4: ARCHIVOS DE CONFIGURACIÓN DE VS CODE
+---------------------------------------------------------------------------
+Ve a la carpeta ".vscode" dentro de tu proyecto y asegúrate de que los 
+siguientes dos archivos contengan este código exacto:
+
+-----------------------------------------
+1. ARCHIVO: c_cpp_properties.json
+-----------------------------------------
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "C:/npcap-sdk/Include",
+                "${workspaceFolder}/imgui",
+                "${workspaceFolder}/imgui/backends"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE",
+                "WPCAP"
+            ],
+            "compilerPath": "C:/msys64/ucrt64/bin/g++.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-gcc-x64"
+        }
+    ],
+    "version": 4
+}
+
+-----------------------------------------
+2. ARCHIVO: tasks.json
+-----------------------------------------
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "cppbuild",
+            "label": "Compilar Sniffer con Npcap e ImGui",
+            "command": "C:/msys64/ucrt64/bin/g++.exe",
+            "args": [
+                "-fdiagnostics-color=always",
+                "-g",
+                "${workspaceFolder}/src/*.cpp",
+                "${workspaceFolder}/imgui/*.cpp",
+                "${workspaceFolder}/imgui/backends/imgui_impl_glfw.cpp",
+                "${workspaceFolder}/imgui/backends/imgui_impl_opengl3.cpp",
+                "-o", "${workspaceFolder}\\sniffer.exe",
+                "-I", "C:/npcap-sdk/Include",
+                "-I", "${workspaceFolder}/imgui",
+                "-I", "${workspaceFolder}/imgui/backends",
+                "-L", "C:/npcap-sdk/Lib/x64",
+                "-lwpcap", 
+                "-lPacket",
+                "-lglfw3",
+                "-lgdi32",
+                "-lopengl32"
+            ],
+            "options": {
+                "cwd": "C:/msys64/ucrt64/bin"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
+
+---------------------------------------------------------------------------
+PARTE 4: CÓMO COMPILAR Y EJECUTAR
 ---------------------------------------------------------------------------
 1. Abre tu archivo de código (`src/sniffer.cpp`).
 2. Presiona las teclas: Ctrl + Shift + B.
+   2.1 En caso de aparecer varias opciones seleccionar la que dice: 
+      "Compilar Sniffer con Npcap e ImGui".
 3. El compilador procesará todos los archivos. Al finalizar con éxito, se 
    creará un archivo ejecutable llamado `sniffer.exe` en la raíz de tu proyecto.
 4. Para ejecutarlo desde la terminal de VS Code, escribe:
    ./sniffer.exe
+
+---------------------------------------------------------------------------
+PARTE 5: TODO FUNCIONANDO
+---------------------------------------------------------------------------
+Para comprobar que todo fue instalado correctamante es necesario compilar 
+por primera vez el proyecto, de esta forma se comprobará que el entorno 
+gráfico funciona correctamente.
+
+En caso de la libreria NPCAP es necesario cambiar el código base por el 
+siguiente y volver a compilar:
+
+---------------------------------------------------------------------------
+#define WPCAP
+#include <pcap.h>
+#include <iostream>
+
+using namespace std;
+
+int main() {
+    char errbuf[PCAP_ERRBUF_SIZE];
+    pcap_if_t *interfaces;
+
+    if (pcap_findalldevs(&interfaces, errbuf) == -1) {
+        cout << "Error al buscar interfaces: " << errbuf << endl;
+        return 1;
+    }
+
+    cout << "¡Npcap configurado con exito!" << endl;
+    cout << "Interfaces encontradas:" << endl;
+
+    for (pcap_if_t *d = interfaces; d != NULL; d = d->next) {
+        cout << "- " << (d->description ? d->description : d->name) << endl;
+    }
+
+    pcap_freealldevs(interfaces);
+    return 0;
+}
+---------------------------------------------------------------------------
 
 ---------------------------------------------------------------------------
 * NOTA DE REDES: Para capturar paquetes reales a través del driver de Npcap, 
