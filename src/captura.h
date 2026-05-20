@@ -1,0 +1,205 @@
+#include <pcap.h>
+#include <Winsock2.h>
+#include <tchar.h>
+#include <ctime>
+#include <vector>
+#include <string>
+#include <mutex>
+
+using namespace std;
+
+/*----- FUNCIONES CAPTURA DE PAQUETES -----*/
+BOOL LoadNpcapDlls()
+{
+  _TCHAR npcap_dir[512];
+  UINT len;
+  len = GetSystemDirectory(npcap_dir, 480);
+  if (!len) {
+    fprintf(stderr, "Error in GetSystemDirectory: %x", GetLastError());
+    return FALSE;
+  }
+  _tcscat_s(npcap_dir, 512, _T("\\Npcap"));
+  if (SetDllDirectory(npcap_dir) == 0) {
+    fprintf(stderr, "Error in SetDllDirectory: %x", GetLastError());
+    return FALSE;
+  }
+  return TRUE;
+}
+
+/* 4 bytes IP address */
+typedef struct ip_address{
+  u_char byte1;
+  u_char byte2;
+  u_char byte3;
+  u_char byte4;
+}ip_address;
+
+/* IPv4 header */
+typedef struct ip_header{
+  u_char  ver_ihl; // Version (4 bits) + IP header length (4 bits)
+  u_char  tos;     // Type of service 
+  u_short tlen;    // Total length 
+  u_short identification; // Identification
+  u_short flags_fo; // Flags (3 bits) + Fragment offset (13 bits)
+  u_char  ttl;      // Time to live
+  u_char  proto;    // Protocol
+  u_short crc;      // Header checksum
+  ip_address  saddr; // Source address
+  ip_address  daddr; // Destination address
+  u_int  op_pad;     // Option + Padding
+}ip_header;
+
+/* IPv6 header (pendiente) */
+
+/* TCP header (pendiente) */
+
+/* UDP header*/
+typedef struct udp_header{
+  u_short sport; // Source port
+  u_short dport; // Destination port
+  u_short len;   // Datagram length
+  u_short crc;   // Checksum
+}udp_header;
+
+
+// Estructuras para almacenar la información limpia
+struct PaqueteInfo_UDP {
+    std::string timestamp;
+    int longitud;
+    std::string origen;
+    std::string destino;
+};
+
+/* ---- Variables globales compartidas entre Npcap e ImGui ----*/
+// Vector que guardara todos los paquetes que van llegando de forma dinámica
+vector<PaqueteInfo_UDP> lista_paquetes; // FALTAN AGREGAR LOS DEMÁS PARA LOS OTRO PROTOCOLOS
+// Variable que nos ayudará a que no se afecten los paquetes por el uso de su llegada y la interfaz
+mutex paquetes_mutex;              
+bool captura_activa = false;        
+// Variable poder detener la captura     
+pcap_t* adhandle_global = NULL; 
+
+// Funci+on encargada de organizar el paquete que llegó
+void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_char *pkt_data)
+{
+  struct tm ltime;            // Estructura de tiempo desglosada (horas, minutos, segundos)
+  char timestr[16];           // Búfer intermedio para formatear el tiempo a cadena de texto
+  ip_header *ih;              // Puntero base a la estructura de la cabecera IP
+  udp_header *uh;             // Puntero base a la estructura de la cabecera UDP
+  u_int ip_len;               // Variable para almacenar el desplazamiento de la cabecera IP
+  u_short sport, dport;       // Puertos de red locales en formato de host
+  time_t local_tv_sec;        // Segundos de la marca de tiempo de la captura
+
+  // Para evitar warnings
+  (VOID)(param);
+
+  // Obtener la hora en que se obtuvo el paquete
+  local_tv_sec = header->ts.tv_sec;
+  localtime_s(&ltime, &local_tv_sec);
+  strftime(timestr, sizeof timestr, "%H:%M:%S", &ltime);
+
+  // El estándar Ethernet encapsula datos tras 14 bytes. Se saltan 14 bytes para apuntar al inicio de IPv4.
+  ih = (ip_header *)(pkt_data + 14);
+
+  // Extrae los 4 bits bajos de 'ver_ihl' para saber el tamaño de la cabecera en palabras de 32 bits, luego multiplica por 4 para obtener bytes
+  ip_len = (ih->ver_ihl & 0xf) * 4;
+
+  // La cabecera UDP empieza inmediatamente después de que termina la cabecera IP dinámica (Puntero Base IP + tamaño calculado IP)
+  uh = (udp_header *)((u_char*)ih + ip_len);
+
+  // Los paquetes viajan por la red en formato Network Byte Order (Big Endian). 
+  // ntohs convierte los bytes binarios al orden de lectura del procesador de la PC (Little Endian en arquitecturas x86/x64).
+  sport = ntohs(uh->sport);
+  dport = ntohs(uh->dport);
+
+  char src_ip[32], dst_ip[32];
+  // Construye la cadena estructurando los 4 bytes individuales de la IP junto con el puerto mapeado
+  sprintf_s(src_ip, "%d.%d.%d.%d:%d", ih->saddr.byte1, ih->saddr.byte2, ih->saddr.byte3, ih->saddr.byte4, sport);
+  sprintf_s(dst_ip, "%d.%d.%d.%d:%d", ih->daddr.byte1, ih->daddr.byte2, ih->daddr.byte3, ih->daddr.byte4, dport);
+
+  // Guardar el vector después de agregar el paquete capturado
+  // Se usan las llaves para manejar el uso exclusivo del vector
+  {
+    // Se bloquea la variable para que este solo la pueda editar
+    lock_guard<mutex> lock(paquetes_mutex);
+
+    // Falta agregar un switch para distintos protocolos
+    PaqueteInfo_UDP nuevo_pkt = { timestr, (int)header->len, src_ip, dst_ip };
+    
+    lista_paquetes.push_back(nuevo_pkt);
+  }
+}
+
+void iniciar_hilo_captura(int id_interfaz)
+{
+  pcap_if_t *alldevs;                 // Puntero base para la enumeración de dispositivos locales
+  pcap_if_t *d;                       // Puntero de exploración intermedio
+  char errbuf[PCAP_ERRBUF_SIZE];      // Almacenamiento de errores de inicialización
+  u_int netmask;                      // Máscara de red de la interfaz elegida (requerido para compilar filtros de pcap)
+  char packet_filter[] = "ip and udp";// Filtro de bajo nivel BPF: El sniffer descartará todo tráfico que NO sea IPv4 y UDP
+  struct bpf_program fcode;           // Estructura binaria compilada que almacena la regla del filtro
+
+  // Termina si no encontro las dependencias de npcap
+  if (!LoadNpcapDlls()) return;
+
+  // Vuelve a solicitar la lista de interfaces
+  if (pcap_findalldevs_ex(PCAP_SRC_IF_STRING, NULL, &alldevs, errbuf) == -1) return;
+  
+  // Buscamos la interfaz que el usuario seleccionó en ImGui
+  d = alldevs;
+  for (int i = 0; i < id_interfaz && d != NULL; i++) {
+      d = d->next;
+  }
+
+  // Si no se encuentra termina
+  if (d == NULL) {
+      pcap_freealldevs(alldevs);
+      return;
+  }
+
+  // Abre la interfaz en modo promiscuo. 
+  // 65536 es la porción máxima del paquete a capturar (Snapshot length). 
+  // PCAP_OPENFLAG_PROMISCUOUS fuerza a escuchar TODO el tráfico del segmento físico, no solo lo dirigido a la PC.
+  // 500 es el tiempo de Read Timeout en milisegundos.
+  if ( (adhandle_global = pcap_open(d->name, 65536, PCAP_OPENFLAG_PROMISCUOUS, 10, NULL, errbuf) ) == NULL) {
+    pcap_freealldevs(alldevs);
+    return;
+  }
+  
+  // Comprobamos la capa de enlace de datos (Datalink)
+  // Solo se soportan redes bajo el estándar Ethernet (DLT_EN10MB).
+  if(pcap_datalink(adhandle_global) != DLT_EN10MB) {
+    pcap_close(adhandle_global);
+    pcap_freealldevs(alldevs);
+    return;
+  }
+  
+  // Extrae la máscara de red de la tarjeta seleccionada para inicializar correctamente el motor de filtrado BPF
+  if(d->addresses != NULL){
+    netmask=((struct sockaddr_in *)(d->addresses->netmask))->sin_addr.S_un.S_addr;
+  }else {
+    // Máscara por defecto alternativa (Clase C: 255.255.255.0) en caso de interfaces sin configuración IP
+    netmask=0xffffff; 
+  }
+
+  // Compila la cadena de texto de filtrado "ip and udp" en código máquina optimizado entendible por el kernel (BPF)
+  if (pcap_compile(adhandle_global, &fcode, packet_filter, 1, netmask) < 0 ) {
+    pcap_freealldevs(alldevs);
+    return;
+  }
+  
+  // Inyecta el filtro compilado directamente en el manejador de captura abierto
+  if (pcap_setfilter(adhandle_global, &fcode) < 0) {
+    pcap_freealldevs(alldevs);
+    return;
+  }
+  
+  // Se liberan todas las otras interfaces que no utilizamos
+  pcap_freealldevs(alldevs);
+   
+  captura_activa = true;
+  // Entra en un ciclo infinito controlado por hardware.
+  // El segundo parámetro '0' indica que procesará paquetes de forma indefinida hasta que ocurra un error o un pcap_breakloop().
+  // Cada vez que llega un paquete, salta automáticamente a ejecutar la función 'packet_handler'.
+  pcap_loop(adhandle_global, 0, packet_handler, NULL);
+}
