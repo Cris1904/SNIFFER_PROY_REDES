@@ -62,22 +62,47 @@ typedef struct udp_header{
 }udp_header;
 
 
-// Estructuras para almacenar la información limpia
-struct PaqueteInfo_UDP {
-    std::string timestamp;
-    int longitud;
-    std::string origen;
-    std::string destino;
+// CAMBIAR A CLASES Estructuras para almacenar la información limpia
+class PaqueteInfo{
+  public:
+  int id;
+  string tiempo_vida;
+  int longitud;
+  string IP_origen;
+  string IP_destino;
+  string protocolo;
+  string Puerto_origen;
+  string Puerto_destino;
+  PaqueteInfo(int id, string tiempo_vida, int longitud, string IP_origen, string IP_destino, string protocolo, string Puerto_origen, string Puerto_destino){
+    this-> id=id;
+    this-> tiempo_vida=tiempo_vida;
+    this-> longitud=longitud;
+    this-> IP_origen=IP_origen;
+    this-> IP_destino=IP_destino;
+    this-> protocolo=protocolo;
+    this-> Puerto_origen=Puerto_origen;
+    this-> Puerto_destino=Puerto_destino;
+  }
+};
+
+class PaqueteInfo_UDP : public PaqueteInfo{
+  public:
+  using PaqueteInfo::PaqueteInfo;
+  
 };
 
 /* ---- Variables globales compartidas entre Npcap e ImGui ----*/
 // Vector que guardara todos los paquetes que van llegando de forma dinámica
-vector<PaqueteInfo_UDP> lista_paquetes; // FALTAN AGREGAR LOS DEMÁS PARA LOS OTRO PROTOCOLOS
+vector<PaqueteInfo> lista_paquetes; // CAMBIAR A CLASES FALTAN AGREGAR LOS DEMÁS PARA LOS OTRO PROTOCOLOS
 // Variable que nos ayudará a que no se afecten los paquetes por el uso de su llegada y la interfaz
 mutex paquetes_mutex;              
 bool captura_activa = false;        
 // Variable poder detener la captura     
 pcap_t* adhandle_global = NULL; 
+// Hora en que inicio la captura
+time_t hora_global_inicio;
+// ID del paquete
+int id=0;
 
 // Funci+on encargada de organizar el paquete que llegó
 void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_char *pkt_data)
@@ -93,9 +118,15 @@ void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_cha
   // Para evitar warnings
   (VOID)(param);
 
-  // Obtener la hora en que se obtuvo el paquete
+  // Se aumenta número de paquete
+  id++;
+
+  // 1. Obtener la hora en que se obtuvo el paquete
   local_tv_sec = header->ts.tv_sec;
-  localtime_s(&ltime, &local_tv_sec);
+  // 2. Restar la hora del paquete menos la hora global de referencia
+  // (Asegúrate de que 'hora_global_inicio' esté declarada e inicializada en tu código global)
+  time_t tiempo_restado = local_tv_sec - hora_global_inicio;
+  gmtime_s(&ltime, &tiempo_restado);
   strftime(timestr, sizeof timestr, "%H:%M:%S", &ltime);
 
   // El estándar Ethernet encapsula datos tras 14 bytes. Se saltan 14 bytes para apuntar al inicio de IPv4.
@@ -113,9 +144,14 @@ void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_cha
   dport = ntohs(uh->dport);
 
   char src_ip[32], dst_ip[32];
+  char src_puerto[32], dst_puerto[32];
+
   // Construye la cadena estructurando los 4 bytes individuales de la IP junto con el puerto mapeado
-  sprintf_s(src_ip, "%d.%d.%d.%d:%d", ih->saddr.byte1, ih->saddr.byte2, ih->saddr.byte3, ih->saddr.byte4, sport);
-  sprintf_s(dst_ip, "%d.%d.%d.%d:%d", ih->daddr.byte1, ih->daddr.byte2, ih->daddr.byte3, ih->daddr.byte4, dport);
+  sprintf_s(src_ip, "%d.%d.%d.%d", ih->saddr.byte1, ih->saddr.byte2, ih->saddr.byte3, ih->saddr.byte4);
+  sprintf_s(dst_ip, "%d.%d.%d.%d", ih->daddr.byte1, ih->daddr.byte2, ih->daddr.byte3, ih->daddr.byte4);
+
+  sprintf_s(src_puerto, "%d", sport);
+  sprintf_s(dst_puerto, "%d", dport);
 
   // Guardar el vector después de agregar el paquete capturado
   // Se usan las llaves para manejar el uso exclusivo del vector
@@ -124,7 +160,7 @@ void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_cha
     lock_guard<mutex> lock(paquetes_mutex);
 
     // Falta agregar un switch para distintos protocolos
-    PaqueteInfo_UDP nuevo_pkt = { timestr, (int)header->len, src_ip, dst_ip };
+    PaqueteInfo_UDP nuevo_pkt = {id, timestr, (int)header->len, src_ip, dst_ip, "UDP", src_puerto, dst_puerto};
     
     lista_paquetes.push_back(nuevo_pkt);
   }
@@ -201,5 +237,6 @@ void iniciar_hilo_captura(int id_interfaz)
   // Entra en un ciclo infinito controlado por hardware.
   // El segundo parámetro '0' indica que procesará paquetes de forma indefinida hasta que ocurra un error o un pcap_breakloop().
   // Cada vez que llega un paquete, salta automáticamente a ejecutar la función 'packet_handler'.
+  hora_global_inicio=time(NULL);
   pcap_loop(adhandle_global, 0, packet_handler, NULL);
 }

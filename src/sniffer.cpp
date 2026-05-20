@@ -22,7 +22,7 @@ int main() {
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
   // 2. Crear ventana
-  GLFWwindow* window = glfwCreateWindow(1280, 720, "Prueba ImGui - Proyecto Redes I", NULL, NULL);
+  GLFWwindow* window = glfwCreateWindow(1280, 720, "Sniffer - Proyecto de Redes", NULL, NULL);
   if (window == NULL) return 1;
   glfwMakeContextCurrent(window);
   glfwSwapInterval(1); 
@@ -31,14 +31,14 @@ int main() {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   ImGuiIO& io = ImGui::GetIO(); (void)io;
-  ImGui::StyleColorsDark();
+  ImGui::StyleColorsClassic();
 
   // 4. Inicializar Backends
   ImGui_ImplGlfw_InitForOpenGL(window, true);
   ImGui_ImplOpenGL3_Init(glsl_version);
 
   // --- OBTENER INTERFACES PARA EL COMBO BOX DE IMGUI ---
-  std::vector<std::string> lista_nombres_interfaces;
+  vector<string> lista_nombres_interfaces;
   pcap_if_t* alldevs;
   char errbuf[PCAP_ERRBUF_SIZE];
 
@@ -112,12 +112,16 @@ int main() {
     ImGui::End();
 
     ImGui::Begin("Paquetes Capturados");
-    if (ImGui::BeginTable("TablaPaquetes", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY)) {
+    if (ImGui::BeginTable("TablaPaquetes", 8, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY)) {
       // Definición de las etiquetas de cada columna
-      ImGui::TableSetupColumn("Tiempo");
+      ImGui::TableSetupColumn("Número de paquete");
+      ImGui::TableSetupColumn("Tiempo de vida");
       ImGui::TableSetupColumn("Longitud (Bytes)");
-      ImGui::TableSetupColumn("Origen (IP:Puerto)");
-      ImGui::TableSetupColumn("Destino (IP:Puerto)");
+      ImGui::TableSetupColumn("IP Origen");
+      ImGui::TableSetupColumn("IP Destino");
+      ImGui::TableSetupColumn("Protocolo");
+      ImGui::TableSetupColumn("Puerto Origen");
+      ImGui::TableSetupColumn("Puerto Destino");
       ImGui::TableHeadersRow(); 
 
       /* Bloqueamos el mutex antes de leer el vector. Esto evita que el hilo de captura intente escribir 
@@ -129,10 +133,14 @@ int main() {
         // Salta de fila automáticamente para el nuevo paquete
         ImGui::TableNextRow(); 
         // Distribuye cada campo en su columna
-        ImGui::TableSetColumnIndex(0); ImGui::Text("%s", pkt.timestamp.c_str());
-        ImGui::TableSetColumnIndex(1); ImGui::Text("%d", pkt.longitud);
-        ImGui::TableSetColumnIndex(2); ImGui::Text("%s", pkt.origen.c_str());
-        ImGui::TableSetColumnIndex(3); ImGui::Text("%s", pkt.destino.c_str());
+        ImGui::TableSetColumnIndex(0); ImGui::Text("%d", pkt.id);
+        ImGui::TableSetColumnIndex(1); ImGui::Text("%s", pkt.tiempo_vida.c_str());
+        ImGui::TableSetColumnIndex(2); ImGui::Text("%d", pkt.longitud);
+        ImGui::TableSetColumnIndex(3); ImGui::Text("%s", pkt.IP_origen.c_str());
+        ImGui::TableSetColumnIndex(4); ImGui::Text("%s", pkt.IP_destino.c_str());
+        ImGui::TableSetColumnIndex(5); ImGui::Text("%s", pkt.protocolo.c_str());
+        ImGui::TableSetColumnIndex(6); ImGui::Text("%s", pkt.Puerto_origen.c_str());
+        ImGui::TableSetColumnIndex(7); ImGui::Text("%s", pkt.Puerto_destino.c_str());
       }
       
       if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()){
