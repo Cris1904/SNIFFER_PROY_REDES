@@ -12,6 +12,21 @@
 
 using namespace std;
 
+/* ---- Variables globales ----*/
+char ip_o[64] = "";
+char ip_d[64] = "";
+char proto[64] = "";
+char puerto_d[64] = "";
+
+/* ---- Menu de filtrado ---- */
+void filtrado(){
+  ImGui::Text("Filtrado de paquetes");
+  ImGui::Text("IP Origen:"); ImGui::SameLine(); ImGui::SetNextItemWidth(120); ImGui::InputText("##ip_o", ip_o, IM_ARRAYSIZE(ip_o)); ImGui::SameLine();
+  ImGui::Text("IP Destino:"); ImGui::SameLine(); ImGui::SetNextItemWidth(120); ImGui::InputText("##ip_d", ip_d, IM_ARRAYSIZE(ip_d)); ImGui::SameLine();
+  ImGui::Text("Protocolo:"); ImGui::SameLine(); ImGui::SetNextItemWidth(80);  ImGui::InputText("##proto", proto, IM_ARRAYSIZE(proto)); ImGui::SameLine();
+  ImGui::Text("Puerto destino:"); ImGui::SameLine(); ImGui::SetNextItemWidth(80);  ImGui::InputText("##p_d", puerto_d, IM_ARRAYSIZE(puerto_d));
+}
+
 /*----- INICIO DE FUNCIÓN MAIN (PRINCIPAL) -----*/
 int main() {
   // 1. Inicializar GLFW
@@ -96,6 +111,8 @@ int main() {
         // Se desenlaza el hilo del flujo principal para que corra en segundo plano
         hilo_pcap.detach(); 
       } 
+      ImGui::Spacing();
+      filtrado();
     }else {
       // En caso de que se capturen
       ImGui::Text("Estado: Capturando");
@@ -108,6 +125,8 @@ int main() {
           captura_activa = false; 
         }
       }
+      ImGui::Spacing();
+      filtrado();
     }
     ImGui::End();
 

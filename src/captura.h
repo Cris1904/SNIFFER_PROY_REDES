@@ -122,6 +122,42 @@ time_t hora_global_inicio;
 // ID del paquete
 int id=0;
 
+// Función para establecer el protocolo
+string asignar_protocolo(u_short sport, u_short dport, u_char ip_proto) {
+  // Si es UDP
+  if (ip_proto == 17) {
+    if (sport == 53 || dport == 53)   return "DNS";
+    if (sport == 67 || dport == 67)   return "DHCP (Server)";
+    if (sport == 68 || dport == 68)   return "DHCP (Client)";
+    if (sport == 69 || dport == 69)   return "TFTP";
+    if (sport == 123 || dport == 123) return "NTP";
+    if (sport == 161 || dport == 161) return "SNMP";
+    if (sport == 443 || dport == 443) return "HTTP/3";
+    if (sport == 514 || dport == 514) return "Syslog";
+    return "UDP";
+  }
+  // Si es TCP
+  else if (ip_proto == 6) {
+    if (sport == 20 || dport == 20)   return "FTP (Data)";
+    if (sport == 21 || dport == 21)   return "FTP (Control)";
+    if (sport == 22 || dport == 22)   return "SSH / SFTP";
+    if (sport == 23 || dport == 23)   return "Telnet";
+    if (sport == 25 || dport == 25)   return "SMTP";
+    if (sport == 80 || dport == 80)   return "HTTP";
+    if (sport == 110 || dport == 110) return "POP3";
+    if (sport == 143 || dport == 143) return "IMAP";
+    if (sport == 179 || dport == 179) return "BGP";
+    if (sport == 389 || dport == 389) return "LDAP";
+    if (sport == 443 || dport == 443) return "HTTPS";
+    if (sport == 445 || dport == 445) return "SMB";
+    if (sport == 587 || dport == 587) return "SMTP (Seguro)";
+    if (sport == 636 || dport == 636) return "LDAPS";
+    if (sport == 993 || dport == 993) return "IMAPS";
+    return "TCP";
+  }
+  return "nadota";
+}
+
 // Funci+on encargada de organizar el paquete que llegó
 void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_char *pkt_data)
 {
@@ -132,6 +168,7 @@ void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_cha
   u_int ip_len;               // Variable para almacenar el desplazamiento de la cabecera IP
   u_short sport, dport;       // Puertos de red locales en formato de host
   time_t local_tv_sec;        // Segundos de la marca de tiempo de la captura
+  string protocolo;           // Protocolo que será asignado
 
   // Para evitar warnings
   (VOID)(param);
@@ -186,10 +223,12 @@ void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_cha
     lock_guard<mutex> lock(paquetes_mutex);
 
     if (ih->proto == 17){ // UDP
-      PaqueteInfo_UDP nuevo_pkt = {id, timestr, (int)header->len, src_ip, dst_ip, "UDP", src_puerto, dst_puerto};
+      protocolo=asignar_protocolo(sport, dport, ih->proto);
+      PaqueteInfo_UDP nuevo_pkt = {id, timestr, (int)header->len, src_ip, dst_ip, protocolo, src_puerto, dst_puerto};
       lista_paquetes.push_back(nuevo_pkt);
     } else if (ih->proto == 6){  //TCP
-      PaqueteInfo_TCP nuevo_pkt = {id, timestr, (int)header->len, src_ip, dst_ip, "TCP", src_puerto, dst_puerto};
+      protocolo=asignar_protocolo(sport, dport, ih->proto);
+      PaqueteInfo_TCP nuevo_pkt = {id, timestr, (int)header->len, src_ip, dst_ip, protocolo, src_puerto, dst_puerto};
       lista_paquetes.push_back(nuevo_pkt);
     } else {
       return; 
