@@ -51,7 +51,18 @@ typedef struct ip_header{
 
 /* IPv6 header (pendiente) */
 
-/* TCP header (pendiente) */
+/* TCP header */
+typedef struct tcp_header {
+    u_short sport;       // Source port
+    u_short dport;       // Destination port
+    u_int   seq;         // Sequence number
+    u_int   ack;         // Acknowledgement number
+    u_char  offx2;       // Data offset, rsvd
+    u_char  flags;       // Control flags
+    u_short win;         // Window
+    u_short crc;         // Checksum
+    u_short urp;         // Urgent pointer
+}tcp_header;
 
 /* UDP header*/
 typedef struct udp_header{
@@ -85,10 +96,17 @@ class PaqueteInfo{
   }
 };
 
+// Para poder agregar más datos a mostrar más a delante
 class PaqueteInfo_UDP : public PaqueteInfo{
   public:
   using PaqueteInfo::PaqueteInfo;
   
+};
+
+// Para poder agregar más datos a mostrar más a delante
+class PaqueteInfo_TCP : public PaqueteInfo{
+  public:
+  using PaqueteInfo::PaqueteInfo;
 };
 
 /* ---- Variables globales compartidas entre Npcap e ImGui ----*/
@@ -135,21 +153,29 @@ void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_cha
   // Extrae los 4 bits bajos de 'ver_ihl' para saber el tamaño de la cabecera en palabras de 32 bits, luego multiplica por 4 para obtener bytes
   ip_len = (ih->ver_ihl & 0xf) * 4;
 
-  // La cabecera UDP empieza inmediatamente después de que termina la cabecera IP dinámica (Puntero Base IP + tamaño calculado IP)
-  uh = (udp_header *)((u_char*)ih + ip_len);
+  // Determinar protocolo (17 = UDP, 6 = TCP)
+  // Falta añadir el manejo de los distintos protocolos derivados 
+  if (ih->proto == 17){
+    udp_header *uh = (udp_header *)((u_char*)ih + ip_len);
+    sport = ntohs(uh->sport);
+    dport = ntohs(uh->dport);
+  } else if (ih->proto == 6){
+    tcp_header *th = (tcp_header *)((u_char*)ih + ip_len);
+    sport = ntohs(th->sport);
+    dport = ntohs(th->dport);
+  } else {
+    return; 
+  }
 
-  // Los paquetes viajan por la red en formato Network Byte Order (Big Endian). 
-  // ntohs convierte los bytes binarios al orden de lectura del procesador de la PC (Little Endian en arquitecturas x86/x64).
-  sport = ntohs(uh->sport);
-  dport = ntohs(uh->dport);
-
+  // Variables para guardar las direcciones y puertos después de traducir
   char src_ip[32], dst_ip[32];
   char src_puerto[32], dst_puerto[32];
 
-  // Construye la cadena estructurando los 4 bytes individuales de la IP junto con el puerto mapeado
+  // Construye la cadena estructurando los 4 bytes individuales de la IP
   sprintf_s(src_ip, "%d.%d.%d.%d", ih->saddr.byte1, ih->saddr.byte2, ih->saddr.byte3, ih->saddr.byte4);
   sprintf_s(dst_ip, "%d.%d.%d.%d", ih->daddr.byte1, ih->daddr.byte2, ih->daddr.byte3, ih->daddr.byte4);
 
+  // Construye los puertos
   sprintf_s(src_puerto, "%d", sport);
   sprintf_s(dst_puerto, "%d", dport);
 
@@ -159,10 +185,15 @@ void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_cha
     // Se bloquea la variable para que este solo la pueda editar
     lock_guard<mutex> lock(paquetes_mutex);
 
-    // Falta agregar un switch para distintos protocolos
-    PaqueteInfo_UDP nuevo_pkt = {id, timestr, (int)header->len, src_ip, dst_ip, "UDP", src_puerto, dst_puerto};
-    
-    lista_paquetes.push_back(nuevo_pkt);
+    if (ih->proto == 17){ // UDP
+      PaqueteInfo_UDP nuevo_pkt = {id, timestr, (int)header->len, src_ip, dst_ip, "UDP", src_puerto, dst_puerto};
+      lista_paquetes.push_back(nuevo_pkt);
+    } else if (ih->proto == 6){  //TCP
+      PaqueteInfo_TCP nuevo_pkt = {id, timestr, (int)header->len, src_ip, dst_ip, "TCP", src_puerto, dst_puerto};
+      lista_paquetes.push_back(nuevo_pkt);
+    } else {
+      return; 
+    }
   }
 }
 
@@ -172,7 +203,7 @@ void iniciar_hilo_captura(int id_interfaz)
   pcap_if_t *d;                       // Puntero de exploración intermedio
   char errbuf[PCAP_ERRBUF_SIZE];      // Almacenamiento de errores de inicialización
   u_int netmask;                      // Máscara de red de la interfaz elegida (requerido para compilar filtros de pcap)
-  char packet_filter[] = "ip and udp";// Filtro de bajo nivel BPF: El sniffer descartará todo tráfico que NO sea IPv4 y UDP
+  char packet_filter[] = "ip and (udp or tcp)";// Filtro de bajo nivel BPF: El sniffer descartará todo tráfico que NO sea IPv4 y UDP y TCP
   struct bpf_program fcode;           // Estructura binaria compilada que almacena la regla del filtro
 
   // Termina si no encontro las dependencias de npcap
