@@ -236,7 +236,7 @@ void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_cha
   }
 }
 
-void iniciar_hilo_captura(int id_interfaz)
+void iniciarCaptura(int id_interfaz)
 {
   pcap_if_t *alldevs;                 // Puntero base para la enumeración de dispositivos locales
   pcap_if_t *d;                       // Puntero de exploración intermedio
