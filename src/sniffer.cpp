@@ -149,20 +149,42 @@ int main() {
       /* Bloqueamos el mutex antes de leer el vector (para que el hilo de captura no intente escribir 
       al mismo tiempo que ImGui intenta leer) */
       paquetes_mutex.lock();
-      // Vamos sacando paquete por paquete que hay en este momento para ir mostrando en la tabla
-      // (Lo ponemos en auto para los distintos protocolos)
-      for (auto& pkt : lista_paquetes) {
-        // Salta de fila automaticamente para el nuevo paquete
-        ImGui::TableNextRow(); 
-        // Distrimos cada campo en su columna
-        ImGui::TableSetColumnIndex(0); ImGui::Text("%d", pkt.id);
-        ImGui::TableSetColumnIndex(1); ImGui::Text("%s", pkt.tiempo_vida.c_str());
-        ImGui::TableSetColumnIndex(2); ImGui::Text("%d", pkt.longitud);
-        ImGui::TableSetColumnIndex(3); ImGui::Text("%s", pkt.IP_origen.c_str());
-        ImGui::TableSetColumnIndex(4); ImGui::Text("%s", pkt.IP_destino.c_str());
-        ImGui::TableSetColumnIndex(5); ImGui::Text("%s", pkt.protocolo.c_str());
-        ImGui::TableSetColumnIndex(6); ImGui::Text("%s", pkt.Puerto_origen.c_str());
-        ImGui::TableSetColumnIndex(7); ImGui::Text("%s", pkt.Puerto_destino.c_str());
+      
+      // Comienza el proceso para ver si hay algun filtro activo o no
+      if (ip_o[0] == '\0' && ip_d[0] == '\0' && proto[0] == '\0' && puerto_d[0] == '\0'){
+        // En caso de que no, vamos sacando paquete por paquete que hay en este momento para ir mostrando en la tabla
+        // (Lo ponemos en auto para los distintos protocolos)
+        for (auto& pkt : lista_paquetes) {
+          // Salta de fila automaticamente para el nuevo paquete
+          ImGui::TableNextRow(); 
+          // Distrimos cada campo en su columna
+          ImGui::TableSetColumnIndex(0); ImGui::Text("%d", pkt.id);
+          ImGui::TableSetColumnIndex(1); ImGui::Text("%s", pkt.tiempo_vida.c_str());
+          ImGui::TableSetColumnIndex(2); ImGui::Text("%d", pkt.longitud);
+          ImGui::TableSetColumnIndex(3); ImGui::Text("%s", pkt.IP_origen.c_str());
+          ImGui::TableSetColumnIndex(4); ImGui::Text("%s", pkt.IP_destino.c_str());
+          ImGui::TableSetColumnIndex(5); ImGui::Text("%s", pkt.protocolo.c_str());
+          ImGui::TableSetColumnIndex(6); ImGui::Text("%s", pkt.Puerto_origen.c_str());
+          ImGui::TableSetColumnIndex(7); ImGui::Text("%s", pkt.Puerto_destino.c_str());
+        }
+      }else{
+        // En caso de que si, revisamos paquete por paquete para ver cuales cumplen con el filtro y solo mostrar esos
+        // (Lo ponemos en auto para los distintos protocolos)
+        for (auto& pkt : lista_paquetes) {
+          if((ip_o[0] != '\0' && strcmp(ip_o, pkt.IP_origen.c_str()) == 0) || (ip_d[0] != '\0' && strcmp(ip_d, pkt.IP_destino.c_str()) == 0) || (proto[0] != '\0' && strcmp(proto, pkt.protocolo.c_str()) == 0) || (puerto_d[0] != '\0' && strcmp(puerto_d, pkt.Puerto_destino.c_str()) == 0)){
+            // Salta de fila automaticamente para el nuevo paquete
+            ImGui::TableNextRow(); 
+            // Distrimos cada campo en su columna
+            ImGui::TableSetColumnIndex(0); ImGui::Text("%d", pkt.id);
+            ImGui::TableSetColumnIndex(1); ImGui::Text("%s", pkt.tiempo_vida.c_str());
+            ImGui::TableSetColumnIndex(2); ImGui::Text("%d", pkt.longitud);
+            ImGui::TableSetColumnIndex(3); ImGui::Text("%s", pkt.IP_origen.c_str());
+            ImGui::TableSetColumnIndex(4); ImGui::Text("%s", pkt.IP_destino.c_str());
+            ImGui::TableSetColumnIndex(5); ImGui::Text("%s", pkt.protocolo.c_str());
+            ImGui::TableSetColumnIndex(6); ImGui::Text("%s", pkt.Puerto_origen.c_str());
+            ImGui::TableSetColumnIndex(7); ImGui::Text("%s", pkt.Puerto_destino.c_str());
+          }
+        }
       }
       
       if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()){
