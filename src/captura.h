@@ -74,7 +74,7 @@ typedef struct udp_header{
 
 
 // CAMBIAR A CLASES Estructuras para almacenar la información limpia
-class PaqueteInfo{
+class PaqueteInfo {
   public:
   int id;
   string tiempo_vida;
@@ -84,15 +84,24 @@ class PaqueteInfo{
   string protocolo;
   string Puerto_origen;
   string Puerto_destino;
-  PaqueteInfo(int id, string tiempo_vida, int longitud, string IP_origen, string IP_destino, string protocolo, string Puerto_origen, string Puerto_destino){
-    this-> id=id;
-    this-> tiempo_vida=tiempo_vida;
-    this-> longitud=longitud;
-    this-> IP_origen=IP_origen;
-    this-> IP_destino=IP_destino;
-    this-> protocolo=protocolo;
-    this-> Puerto_origen=Puerto_origen;
-    this-> Puerto_destino=Puerto_destino;
+  int ttl;                    // NUEVO: Tiempo de vida real del paquete IP
+  vector<u_char> raw_data;    // NUEVO: Array con los bytes crudos
+
+  PaqueteInfo(int id, string tiempo_vida, int longitud, string IP_origen, string IP_destino, string protocolo, string Puerto_origen, string Puerto_destino, int ttl, const u_char* data, int data_len) {
+    this->id = id;
+    this->tiempo_vida = tiempo_vida;
+    this->longitud = longitud;
+    this->IP_origen = IP_origen;
+    this->IP_destino = IP_destino;
+    this->protocolo = protocolo;
+    this->Puerto_origen = Puerto_origen;
+    this->Puerto_destino = Puerto_destino;
+    this->ttl = ttl;
+    
+    // Copiamos los bytes crudos a nuestro vector
+    if (data != NULL && data_len > 0) {
+        this->raw_data.assign(data, data + data_len);
+    }
   }
 };
 
@@ -216,19 +225,19 @@ void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_cha
   sprintf_s(src_puerto, "%d", sport);
   sprintf_s(dst_puerto, "%d", dport);
 
+  int ttl_value = ih->ttl; // Extraemos el TTL de la cabecera IPv4
+
   // Guardar el vector después de agregar el paquete capturado
-  // Se usan las llaves para manejar el uso exclusivo del vector
   {
-    // Se bloquea la variable para que este solo la pueda editar
     lock_guard<mutex> lock(paquetes_mutex);
 
-    if (ih->proto == 17){ // UDP
-      protocolo=asignar_protocolo(sport, dport, ih->proto);
-      PaqueteInfo_UDP nuevo_pkt = {id, timestr, (int)header->len, src_ip, dst_ip, protocolo, src_puerto, dst_puerto};
+    if (ih->proto == 17) { // UDP
+      protocolo = asignar_protocolo(sport, dport, ih->proto);
+      PaqueteInfo_UDP nuevo_pkt = {id, timestr, (int)header->len, src_ip, dst_ip, protocolo, src_puerto, dst_puerto, ttl_value, pkt_data, (int)header->len};
       lista_paquetes.push_back(nuevo_pkt);
-    } else if (ih->proto == 6){  //TCP
-      protocolo=asignar_protocolo(sport, dport, ih->proto);
-      PaqueteInfo_TCP nuevo_pkt = {id, timestr, (int)header->len, src_ip, dst_ip, protocolo, src_puerto, dst_puerto};
+    } else if (ih->proto == 6) {  // TCP
+      protocolo = asignar_protocolo(sport, dport, ih->proto);
+      PaqueteInfo_TCP nuevo_pkt = {id, timestr, (int)header->len, src_ip, dst_ip, protocolo, src_puerto, dst_puerto, ttl_value, pkt_data, (int)header->len};
       lista_paquetes.push_back(nuevo_pkt);
     } else {
       return; 

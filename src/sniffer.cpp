@@ -221,7 +221,6 @@ int main()
 
           // Distrimos cada campo en su columna
           ImGui::TableSetColumnIndex(0);
-          ImGui::Text("%d", pkt.id);
           ImGui::TableSetColumnIndex(1);
           ImGui::Text("%s", pkt.tiempo_vida.c_str());
           ImGui::TableSetColumnIndex(2);
@@ -296,7 +295,7 @@ int main()
       if (idPaqueteSeleccionado != -1)
       {
         //Inicializamos el variables que analizan el paquete
-        PaqueteInfo paquete_actual = {0, "", 0, "", "", "", "", ""};
+        PaqueteInfo paquete_actual = {0, "", 0, "", "", "", "", "", 0, nullptr, 0};
         bool paquete_encontrado = false;
 
         // BLOQUEAMOS el mutex para leer el paquete de forma segura
@@ -326,7 +325,38 @@ int main()
 
           ImGui::TableSetColumnIndex(1);
           ImGui::Text("Longitud total capturada: %d bytes", paquete_actual.longitud);
-          //Falta agregar codigo para que se muestre una matriz byte por byte 
+
+          ImGui::Text("TTL (Time To Live): %d", paquete_actual.ttl);
+
+          // Aquí agregamos la matriz byte por byte
+          ImGui::SeparatorText("Contenido del Paquete");
+          
+          // Usamos una región con scroll para no deformar la ventana si el paquete es muy grande
+          ImGui::BeginChild("HexDumpRegion", ImVec2(0, 180), ImGuiChildFlags_Borders, ImGuiWindowFlags_HorizontalScrollbar);
+          
+          string hex_line;
+          string ascii_line;
+          for (size_t i = 0; i < paquete_actual.raw_data.size(); i++) {
+              char hex_buf[4];
+              sprintf(hex_buf, "%02X ", paquete_actual.raw_data[i]);
+              hex_line += hex_buf;
+              
+              // Representación ASCII (reemplaza caracteres no imprimibles por un punto)
+              char c = paquete_actual.raw_data[i];
+              ascii_line += (c >= 32 && c <= 126) ? c : '.';
+
+              // Imprimir línea cada 16 bytes o al final del paquete
+              if ((i + 1) % 16 == 0 || i == paquete_actual.raw_data.size() - 1) {
+                  // Rellenar espacios si la última línea es más corta
+                  while (hex_line.length() < 16 * 3) hex_line += "   ";
+                  
+                  // Formato: Offset | Hexadecimal | ASCII
+                  ImGui::Text("%04zX  %s | %s", (i / 16) * 16, hex_line.c_str(), ascii_line.c_str());
+                  hex_line = "";
+                  ascii_line = "";
+              }
+          }
+          ImGui::EndChild();
         }
       }
 
