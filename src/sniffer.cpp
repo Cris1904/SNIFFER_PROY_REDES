@@ -10,6 +10,8 @@
 #include <string>
 #include "captura.h"
 
+#include <set>
+
 using namespace std;
 
 // ---- Variables globales ----
@@ -17,31 +19,147 @@ char ip_o[64] = "";
 char ip_d[64] = "";
 char proto[64] = "";
 char puerto_d[64] = "";
-int idPaqueteSeleccionado = -1; // guarda el id del paquete seleccionado para su analisis (-1 = ninguno)
+int idPaqueteSeleccionado = -1;
+static int protocolo_combo_idx = 0;
+
+const char* lista_protocolos[] = {
+  "Todos", "UDP", "DNS", "DHCP (Server)", "DHCP (Client)", "TFTP", "NTP", "SNMP", "Syslog",
+  "TCP", "FTP (Data)", "FTP (Control)", "SSH / SFTP", "Telnet", "SMTP", "HTTP", 
+  "POP3", "IMAP", "BGP", "LDAP", "HTTPS", "SMB", "SMTP (Seguro)", "LDAPS", "IMAPS"
+};
 
 // ---- Menu de filtrado ----
-void menuFiltrado()
-{
+void menuFiltrado() {
+  // Se guardaran en un set para evitar repetidas
+  set<string> ips_origen_unicas;
+  set<string> ips_destino_unicas;
+  set<string>puertos_origen;
+  set<string>puertos_destino;
+
+  // Bloqueamos para extraer sin errores de escritura
+  paquetes_mutex.lock();
+  for (const auto& pkt : lista_paquetes) {
+    if (!pkt.IP_origen.empty()) ips_origen_unicas.insert(pkt.IP_origen);
+    if (!pkt.IP_destino.empty()) ips_destino_unicas.insert(pkt.IP_destino);
+    if (!pkt.Puerto_origen.empty()) puertos_origen.insert(pkt.Puerto_origen);
+    if (!pkt.Puerto_destino.empty()) puertos_destino.insert(pkt.Puerto_destino);
+  }
+  paquetes_mutex.unlock();
+
   ImGui::Text("Filtrado de paquetes");
+  
   ImGui::Text("IP Origen:");
   ImGui::SameLine();
-  ImGui::SetNextItemWidth(120);
-  ImGui::InputText("##ip_o", ip_o, IM_ARRAYSIZE(ip_o));
+  ImGui::SetNextItemWidth(150);
+  
+  // Si la variable global 'ip_o' está vacía, mostramos "Todas"
+  const char* ip_ori;
+  if (ip_o[0] == '\0') {
+    ip_ori = "Todas";
+  } else {
+    ip_ori = ip_o;
+  } 
+  
+  if (ImGui::BeginCombo("##combo_ip_o", ip_ori)) {
+    // Opción por defecto para limpiar el filtro
+    bool o_todos_sel = (ip_o[0] == '\0');
+    if (ImGui::Selectable("Todas", o_todos_sel)) {
+      ip_o[0] = '\0';
+    }
+    
+    // Listamos las IPs reales que han llegado
+    for (const auto& ip : ips_origen_unicas) {
+      bool esta_sel = (strcmp(ip_o, ip.c_str()) == 0);
+      if (ImGui::Selectable(ip.c_str(), esta_sel)) {
+        snprintf(ip_o, sizeof(ip_o), "%s", ip.c_str());
+      }
+    }
+    ImGui::EndCombo();
+  }
+
   ImGui::SameLine();
   ImGui::Text("IP Destino:");
   ImGui::SameLine();
-  ImGui::SetNextItemWidth(120);
-  ImGui::InputText("##ip_d", ip_d, IM_ARRAYSIZE(ip_d));
+  ImGui::SetNextItemWidth(150);
+
+  const char* ip_des;
+  if (ip_d[0] == '\0') {
+    ip_des = "Todas";
+  } else {
+    ip_des = ip_d;
+  }
+
+  if (ImGui::BeginCombo("##combo_ip_d", ip_des)){
+    // Opción por defecto para limpiar el filtro
+    bool d_todos_sel = (ip_d[0] == '\0');
+    if (ImGui::Selectable("Todas", d_todos_sel)) {
+      ip_d[0] = '\0';
+    }
+    
+    // Listamos las IPs reales que han llegado
+    for (const auto& ip : ips_destino_unicas) {
+      bool esta_sel = (strcmp(ip_d, ip.c_str()) == 0);
+      if (ImGui::Selectable(ip.c_str(), esta_sel)) {
+        snprintf(ip_d, sizeof(ip_d), "%s", ip.c_str());
+      }
+    }
+    ImGui::EndCombo();
+  }
+  
   ImGui::SameLine();
   ImGui::Text("Protocolo:");
   ImGui::SameLine();
-  ImGui::SetNextItemWidth(80);
-  ImGui::InputText("##proto", proto, IM_ARRAYSIZE(proto));
+  ImGui::SetNextItemWidth(140);
+  if (ImGui::BeginCombo("##proto_combo", lista_protocolos[protocolo_combo_idx])){
+    for (int n = 0; n < IM_ARRAYSIZE(lista_protocolos); n++){
+      const bool esta_seleccionado = (protocolo_combo_idx == n);
+      if (ImGui::Selectable(lista_protocolos[n], esta_seleccionado))
+      {
+        protocolo_combo_idx = n;
+        
+        // Si selecciona "Todos", vaciamos la cadena para desactivar el filtro de protocolo
+        if (n == 0) {
+          proto[0] = '\0'; 
+        } else {
+          // Copiamos el nombre del protocolo seleccionado a la variable global 'proto'
+          snprintf(proto, sizeof(proto), "%s", lista_protocolos[n]);
+        }
+      }
+      
+      if (esta_seleccionado) {
+        ImGui::SetItemDefaultFocus();
+      }
+    }
+    ImGui::EndCombo();
+  }
+
   ImGui::SameLine();
   ImGui::Text("Puerto destino:");
   ImGui::SameLine();
   ImGui::SetNextItemWidth(80);
-  ImGui::InputText("##p_d", puerto_d, IM_ARRAYSIZE(puerto_d));
+
+  const char* puerto_des;
+  if (puerto_d[0] == '\0') {
+    puerto_des = "Todos";
+  } else {
+    puerto_des = puerto_d;
+  } 
+  
+  if (ImGui::BeginCombo("##combo_puertos_des", puerto_des)) {
+    // Opción por defecto para limpiar el filtro
+    bool p_todos_sel = (puerto_d[0] == '\0');
+    if (ImGui::Selectable("Todos", p_todos_sel)) {
+      puerto_d[0] = '\0';
+    }
+    
+    for (const auto& puerto : puertos_destino) {
+      bool esta_sel = (strcmp(puerto_d, puerto.c_str()) == 0);
+      if (ImGui::Selectable(puerto.c_str(), esta_sel)) {
+        snprintf(puerto_d, sizeof(puerto_d), "%s", puerto.c_str());
+      }
+    }
+    ImGui::EndCombo();
+  }
 }
 
 //----- INICIO DE LA FUNCIÓN PRINCIPAL -----
@@ -180,6 +298,7 @@ int main()
     if (ImGui::BeginTable("TablaPaquetes", 8, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY))
     {
       // Definición de las etiquetas de cada columna
+      ImGui::TableSetupScrollFreeze(0, 1);
       ImGui::TableSetupColumn("Número de paquete");
       ImGui::TableSetupColumn("Tiempo de vida");
       ImGui::TableSetupColumn("Longitud (Bytes)");
@@ -284,9 +403,10 @@ int main()
     ImGui::SetNextWindowSize(ImVec2(800, 250), ImGuiCond_FirstUseEver);
     ImGui::Begin("Analisis del paquete");
 
-    if (ImGui::BeginTable("TablaDetalles", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY))
+    if (ImGui::BeginTable("TablaDetalles", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY ))
     {
       // Definición de las etiquetas de cada columna
+      ImGui::TableSetupScrollFreeze(0, 1);
       ImGui::TableSetupColumn("Detalles del paquete", ImGuiTableColumnFlags_WidthFixed, 250.0f);
       ImGui::TableSetupColumn("Bytes del paquete");
       ImGui::TableHeadersRow();

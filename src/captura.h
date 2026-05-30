@@ -120,7 +120,7 @@ class PaqueteInfo_TCP : public PaqueteInfo{
 
 /* ---- Variables globales compartidas entre Npcap e ImGui ----*/
 // Vector que guardara todos los paquetes que van llegando de forma dinámica
-vector<PaqueteInfo> lista_paquetes; // CAMBIAR A CLASES FALTAN AGREGAR LOS DEMÁS PARA LOS OTRO PROTOCOLOS
+vector<PaqueteInfo> lista_paquetes;
 // Variable que nos ayudará a que no se afecten los paquetes por el uso de su llegada y la interfaz
 mutex paquetes_mutex;              
 bool captura_activa = false;        
@@ -141,7 +141,6 @@ string asignar_protocolo(u_short sport, u_short dport, u_char ip_proto) {
     if (sport == 69 || dport == 69)   return "TFTP";
     if (sport == 123 || dport == 123) return "NTP";
     if (sport == 161 || dport == 161) return "SNMP";
-    if (sport == 443 || dport == 443) return "HTTP/3";
     if (sport == 514 || dport == 514) return "Syslog";
     return "UDP";
   }
