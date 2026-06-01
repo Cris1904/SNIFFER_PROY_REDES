@@ -72,8 +72,20 @@ typedef struct udp_header{
   u_short crc;   // Checksum
 }udp_header;
 
+/* Capa ethernet (Direcciones MAC) */
+typedef struct mac_address {
+  u_char byte1;  u_char byte2;  u_char byte3;
+  u_char byte4;  u_char byte5;  u_char byte6;
+} mac_address;
+
+typedef struct ethernet_header {
+  mac_address dest;
+  mac_address src;
+  u_short type;
+} ethernet_header;
 
 // CAMBIAR A CLASES Estructuras para almacenar la información limpia
+
 class PaqueteInfo {
   public:
   int id;
@@ -84,10 +96,12 @@ class PaqueteInfo {
   string protocolo;
   string Puerto_origen;
   string Puerto_destino;
-  int ttl;                    // NUEVO: Tiempo de vida real del paquete IP
+  int ttl;  
+  string mac_origen;          // NUEVO: MAC física de origen
+  string mac_destino;                  // NUEVO: Tiempo de vida real del paquete IP
   vector<u_char> raw_data;    // NUEVO: Array con los bytes crudos
 
-  PaqueteInfo(int id, string tiempo_vida, int longitud, string IP_origen, string IP_destino, string protocolo, string Puerto_origen, string Puerto_destino, int ttl, const u_char* data, int data_len) {
+  PaqueteInfo(int id, string tiempo_vida, int longitud, string IP_origen, string IP_destino, string protocolo, string Puerto_origen, string Puerto_destino, int ttl, string mac_origen, string mac_destino, const u_char* data, int data_len) {
     this->id = id;
     this->tiempo_vida = tiempo_vida;
     this->longitud = longitud;
@@ -97,6 +111,8 @@ class PaqueteInfo {
     this->Puerto_origen = Puerto_origen;
     this->Puerto_destino = Puerto_destino;
     this->ttl = ttl;
+    this->mac_origen = mac_origen;
+    this->mac_destino = mac_destino;
     
     // Copiamos los bytes crudos a nuestro vector
     if (data != NULL && data_len > 0) {
@@ -192,6 +208,13 @@ void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_cha
   gmtime_s(&ltime, &tiempo_restado);
   strftime(timestr, sizeof timestr, "%H:%M:%S", &ltime);
 
+  // Extraer capa Ethernet (MACs)
+  ethernet_header *eh = (ethernet_header *)pkt_data;
+  char mac_src_str[24], mac_dst_str[24];
+  sprintf_s(mac_src_str, "%02x:%02x:%02x:%02x:%02x:%02x", eh->src.byte1, eh->src.byte2, eh->src.byte3, eh->src.byte4, eh->src.byte5, eh->src.byte6);
+  sprintf_s(mac_dst_str, "%02x:%02x:%02x:%02x:%02x:%02x", eh->dest.byte1, eh->dest.byte2, eh->dest.byte3, eh->dest.byte4, eh->dest.byte5, eh->dest.byte6);
+  
+
   // El estándar Ethernet encapsula datos tras 14 bytes. Se saltan 14 bytes para apuntar al inicio de IPv4.
   ih = (ip_header *)(pkt_data + 14);
 
@@ -232,11 +255,11 @@ void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_cha
 
     if (ih->proto == 17) { // UDP
       protocolo = asignar_protocolo(sport, dport, ih->proto);
-      PaqueteInfo_UDP nuevo_pkt = {id, timestr, (int)header->len, src_ip, dst_ip, protocolo, src_puerto, dst_puerto, ttl_value, pkt_data, (int)header->len};
+      PaqueteInfo_UDP nuevo_pkt = {id, timestr, (int)header->len, src_ip, dst_ip, protocolo, src_puerto, dst_puerto, ttl_value, mac_src_str, mac_dst_str, pkt_data, (int)header->len};
       lista_paquetes.push_back(nuevo_pkt);
     } else if (ih->proto == 6) {  // TCP
       protocolo = asignar_protocolo(sport, dport, ih->proto);
-      PaqueteInfo_TCP nuevo_pkt = {id, timestr, (int)header->len, src_ip, dst_ip, protocolo, src_puerto, dst_puerto, ttl_value, pkt_data, (int)header->len};
+      PaqueteInfo_TCP nuevo_pkt = {id, timestr, (int)header->len, src_ip, dst_ip, protocolo, src_puerto, dst_puerto, ttl_value, mac_src_str, mac_dst_str, pkt_data, (int)header->len};
       lista_paquetes.push_back(nuevo_pkt);
     } else {
       return; 

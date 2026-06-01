@@ -415,7 +415,7 @@ int main()
       if (idPaqueteSeleccionado != -1)
       {
         //Inicializamos el variables que analizan el paquete
-        PaqueteInfo paquete_actual = {0, "", 0, "", "", "", "", "", 0, nullptr, 0};
+        PaqueteInfo paquete_actual = {0, "", 0, "", "", "", "", "", 0, "", "",nullptr, 0};
         bool paquete_encontrado = false;
 
         // BLOQUEAMOS el mutex para leer el paquete de forma segura
@@ -430,28 +430,48 @@ int main()
           }
         }
         paquetes_mutex.unlock(); // DESBLOQUEAMOS el mutex
-
         // Si encontramos el paquete, mostramos sus datos
         if (paquete_encontrado)
         {
           ImGui::TableNextRow();
+          ImGui::TableSetColumnIndex(0); // Columna de detalles
 
-          ImGui::TableSetColumnIndex(0);
-          ImGui::Text("Protocolo: %s", paquete_actual.protocolo.c_str());
-          ImGui::Text("IP Origen: %s", paquete_actual.IP_origen.c_str());
-          ImGui::Text("IP Destino: %s", paquete_actual.IP_destino.c_str());
-          ImGui::Text("Puerto Origen: %s", paquete_actual.Puerto_origen.c_str());
-          ImGui::Text("Puerto Destino: %s", paquete_actual.Puerto_destino.c_str());
+          // 1. Capa física (Trama)
+          string titulo_trama = "Trama " + to_string(paquete_actual.id);
+          if (ImGui::TreeNode(titulo_trama.c_str())) {
+              ImGui::Text("Hora de llegada: %s", paquete_actual.tiempo_vida.c_str());
+              ImGui::Text("Longitud: %d bytes", paquete_actual.longitud);
+              ImGui::TreePop();
+          }
 
+          // 2. Capa de enlace (Ethernet)
+          if (ImGui::TreeNode("Ethernet II")) {
+              ImGui::Text("MAC Destino: %s", paquete_actual.mac_destino.c_str());
+              ImGui::Text("MAC Origen:  %s", paquete_actual.mac_origen.c_str());
+              ImGui::TreePop();
+          }
+
+          // 3. Capa de red (IPv4)
+          string titulo_ip = "IPv4";
+          if (ImGui::TreeNode(titulo_ip.c_str())) {
+              ImGui::Text("IP Origen:  %s", paquete_actual.IP_origen.c_str());
+              ImGui::Text("IP Destino: %s", paquete_actual.IP_destino.c_str());
+              ImGui::Text("Tiempo de vida (TTL): %d", paquete_actual.ttl);
+              ImGui::TreePop();
+          }
+
+          // 4. Capa de transporte (TCP/UDP)
+          string titulo_puertos = "Protocolo de transporte (" + paquete_actual.protocolo + ")";
+          if (ImGui::TreeNode(titulo_puertos.c_str())) {
+              ImGui::Text("Puerto Origen:  %s", paquete_actual.Puerto_origen.c_str());
+              ImGui::Text("Puerto Destino: %s", paquete_actual.Puerto_destino.c_str());
+              ImGui::TreePop();
+          }
+
+          // Columna derecha: Bytes Raw 
           ImGui::TableSetColumnIndex(1);
-          ImGui::Text("Longitud total capturada: %d bytes", paquete_actual.longitud);
-
-          ImGui::Text("TTL (Time To Live): %d", paquete_actual.ttl);
-
-          // Aquí agregamos la matriz byte por byte
-          ImGui::SeparatorText("Contenido del Paquete");
+          ImGui::SeparatorText("Contenido del Paquete Hexadecimal");
           
-          // Usamos una región con scroll para no deformar la ventana si el paquete es muy grande
           ImGui::BeginChild("HexDumpRegion", ImVec2(0, 180), ImGuiChildFlags_Borders, ImGuiWindowFlags_HorizontalScrollbar);
           
           string hex_line;
