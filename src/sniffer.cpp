@@ -170,11 +170,11 @@ int main()
     return 1;
   const char *glsl_version = "#version 130";
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 
   // Creamos la ventana grafica
   GLFWwindow *ventana = glfwCreateWindow(1280, 720, "Sniffer - Proyecto de Redes", NULL, NULL);
-  if (ventana == NULL)
+  if (ventana == NULL) 
     return 1;
   glfwMakeContextCurrent(ventana);
   glfwSwapInterval(1);
@@ -227,10 +227,19 @@ int main()
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
+    // Obtener el tamaño actual de la ventana
+    ImVec2 viewportSize = ImGui::GetIO().DisplaySize;
+
+    // Definimos márgenes y alturas relativas
+    float padding = 10.0f;
+    float altoControl = viewportSize.y * 0.2f;
+    float altoTabla = viewportSize.y * 0.45f;
+    float altoAnalisis = viewportSize.y * 0.3f;
+
     // Generamos la seccion grafica imgui para que el usuario maneje el tipo de interfaz asi como la captura y demas
-    ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(800, 250), ImGuiCond_FirstUseEver);
-    ImGui::Begin("Control de Sniffer");
+    ImGui::SetNextWindowPos(ImVec2(padding, padding));
+    ImGui::SetNextWindowSize(ImVec2(viewportSize.x - (padding * 2), altoControl));
+    ImGui::Begin("Control de Sniffer", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
     if (!captura_activa)
     {
@@ -291,10 +300,10 @@ int main()
     ImGui::End(); // terminamos la primera seccion de la interfaz grafica imgui con "end"
 
     // iniciamos la segunda seccion grafica donde se muestra todo el trafico capturado
-    ImGui::SetNextWindowPos(ImVec2(10, 270), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(800, 400), ImGuiCond_FirstUseEver);
-    ImGui::Begin("Paquetes Capturados");
-    
+    ImGui::SetNextWindowPos(ImVec2(padding, padding + altoControl + padding));
+    ImGui::SetNextWindowSize(ImVec2(viewportSize.x - (padding * 2), altoTabla));
+    ImGui::Begin("Paquetes Capturados", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+
     if (ImGui::BeginTable("TablaPaquetes", 8, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY))
     {
       // Definición de las etiquetas de cada columna
@@ -356,19 +365,28 @@ int main()
           ImGui::Text("%s", pkt.Puerto_destino.c_str());
         }
       }
-      else
-      {
-        // En caso de que si, revisamos paquete por paquete para ver cuales cumplen con el filtro y solo mostrar esos
-        // (Lo ponemos en auto para los distintos protocolos)
-        for (auto &pkt : lista_paquetes)
-        {
-          if ((ip_o[0] != '\0' && strcmp(ip_o, pkt.IP_origen.c_str()) == 0) || (ip_d[0] != '\0' && strcmp(ip_d, pkt.IP_destino.c_str()) == 0) || (proto[0] != '\0' && strcmp(proto, pkt.protocolo.c_str()) == 0) || (puerto_d[0] != '\0' && strcmp(puerto_d, pkt.Puerto_destino.c_str()) == 0))
+      else {
+        // En caso de que sí haya filtros
+        for (auto &pkt : lista_paquetes) {
+          // Filtros: Si el campo del filtro está vacío o coincide con el valor del paquete, se muestra el paquete
+          if ((ip_o[0] == '\0' || strcmp(ip_o, pkt.IP_origen.c_str()) == 0) &&
+            (ip_d[0] == '\0' || strcmp(ip_d, pkt.IP_destino.c_str()) == 0) &&
+            (proto[0] == '\0' || strcmp(proto, pkt.protocolo.c_str()) == 0) &&
+            (puerto_d[0] == '\0' || strcmp(puerto_d, pkt.Puerto_destino.c_str()) == 0)) 
           {
-            // Salta de fila automaticamente para el nuevo paquete
             ImGui::TableNextRow();
-            // Distrimos cada campo en su columna
+
             ImGui::TableSetColumnIndex(0);
-            ImGui::Text("%d", pkt.id);
+            char label_id[32];
+            sprintf(label_id, "%d", pkt.id);
+            bool esta_seleccionado = (idPaqueteSeleccionado == pkt.id);
+
+            // Permitir la selección también cuando el filtro está activo
+            if (ImGui::Selectable(label_id, esta_seleccionado, ImGuiSelectableFlags_SpanAllColumns)) {
+              idPaqueteSeleccionado = pkt.id;
+            }
+
+            // Imprimir el resto de columnas
             ImGui::TableSetColumnIndex(1);
             ImGui::Text("%s", pkt.tiempo_vida.c_str());
             ImGui::TableSetColumnIndex(2);
@@ -399,15 +417,15 @@ int main()
     ImGui::End();
 
     // iniciamos la tercera seccion grafica donde se analiza cada uno de los paquetes del trafico
-    ImGui::SetNextWindowPos(ImVec2(10, 670), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(800, 250), ImGuiCond_FirstUseEver);
-    ImGui::Begin("Analisis del paquete");
+    ImGui::SetNextWindowPos(ImVec2(padding, padding + altoControl + padding + altoTabla + padding));
+    ImGui::SetNextWindowSize(ImVec2(viewportSize.x - (padding * 2), altoAnalisis));
+    ImGui::Begin("Analisis del paquete", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
     if (ImGui::BeginTable("TablaDetalles", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY ))
     {
       // Definición de las etiquetas de cada columna
       ImGui::TableSetupScrollFreeze(0, 1);
-      ImGui::TableSetupColumn("Detalles del paquete", ImGuiTableColumnFlags_WidthFixed, 250.0f);
+      ImGui::TableSetupColumn("Detalles del paquete", ImGuiTableColumnFlags_WidthFixed);
       ImGui::TableSetupColumn("Bytes del paquete");
       ImGui::TableHeadersRow();
 
@@ -439,33 +457,40 @@ int main()
           // 1. Capa física (Trama)
           string titulo_trama = "Trama " + to_string(paquete_actual.id);
           if (ImGui::TreeNode(titulo_trama.c_str())) {
-              ImGui::Text("Hora de llegada: %s", paquete_actual.tiempo_vida.c_str());
-              ImGui::Text("Longitud: %d bytes", paquete_actual.longitud);
-              ImGui::TreePop();
+            ImGui::Text("Hora de llegada: %s", paquete_actual.tiempo_vida.c_str());
+            ImGui::Text("Longitud: %d bytes", paquete_actual.longitud);
+            ImGui::TreePop();
           }
 
           // 2. Capa de enlace (Ethernet)
           if (ImGui::TreeNode("Ethernet II")) {
-              ImGui::Text("MAC Destino: %s", paquete_actual.mac_destino.c_str());
-              ImGui::Text("MAC Origen:  %s", paquete_actual.mac_origen.c_str());
-              ImGui::TreePop();
+            ImGui::Text("MAC Destino: %s", paquete_actual.mac_destino.c_str());
+            ImGui::Text("MAC Origen:  %s", paquete_actual.mac_origen.c_str());
+            ImGui::TreePop();
           }
 
           // 3. Capa de red (IPv4)
           string titulo_ip = "IPv4";
           if (ImGui::TreeNode(titulo_ip.c_str())) {
-              ImGui::Text("IP Origen:  %s", paquete_actual.IP_origen.c_str());
-              ImGui::Text("IP Destino: %s", paquete_actual.IP_destino.c_str());
-              ImGui::Text("Tiempo de vida (TTL): %d", paquete_actual.ttl);
-              ImGui::TreePop();
+            ImGui::Text("IP Origen:  %s", paquete_actual.IP_origen.c_str());
+            ImGui::Text("IP Destino: %s", paquete_actual.IP_destino.c_str());
+            ImGui::Text("Tiempo de vida (TTL): %d", paquete_actual.ttl);
+            ImGui::TreePop();
           }
 
           // 4. Capa de transporte (TCP/UDP)
           string titulo_puertos = "Protocolo de transporte (" + paquete_actual.protocolo + ")";
           if (ImGui::TreeNode(titulo_puertos.c_str())) {
-              ImGui::Text("Puerto Origen:  %s", paquete_actual.Puerto_origen.c_str());
-              ImGui::Text("Puerto Destino: %s", paquete_actual.Puerto_destino.c_str());
+            ImGui::Text("Puerto Origen:  %s", paquete_actual.Puerto_origen.c_str());
+            ImGui::Text("Puerto Destino: %s", paquete_actual.Puerto_destino.c_str());
+            ImGui::TreePop();
+          }
+
+          if (paquete_actual.mostrar_dns) {
+            if (ImGui::TreeNode("Análisis DNS")) {
+              ImGui::Text("Dominio consultado: %s", paquete_actual.nombre_dns.c_str());
               ImGui::TreePop();
+            }
           }
 
           // Columna derecha: Bytes Raw 

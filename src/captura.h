@@ -100,8 +100,10 @@ class PaqueteInfo {
   string mac_origen;          // NUEVO: MAC física de origen
   string mac_destino;                  // NUEVO: Tiempo de vida real del paquete IP
   vector<u_char> raw_data;    // NUEVO: Array con los bytes crudos
+  string nombre_dns;
+  bool mostrar_dns = false;
 
-  PaqueteInfo(int id, string tiempo_vida, int longitud, string IP_origen, string IP_destino, string protocolo, string Puerto_origen, string Puerto_destino, int ttl, string mac_origen, string mac_destino, const u_char* data, int data_len) {
+  PaqueteInfo(int id, string tiempo_vida, int longitud, string IP_origen, string IP_destino, string protocolo, string Puerto_origen, string Puerto_destino, int ttl, string mac_origen, string mac_destino, const u_char* data, int data_len, string nombre_dns = "", bool mostrar_dns = false) {
     this->id = id;
     this->tiempo_vida = tiempo_vida;
     this->longitud = longitud;
@@ -113,6 +115,9 @@ class PaqueteInfo {
     this->ttl = ttl;
     this->mac_origen = mac_origen;
     this->mac_destino = mac_destino;
+    this->nombre_dns = nombre_dns;
+    this->mostrar_dns = mostrar_dns;
+  
     
     // Copiamos los bytes crudos a nuestro vector
     if (data != NULL && data_len > 0) {
@@ -182,6 +187,24 @@ string asignar_protocolo(u_short sport, u_short dport, u_char ip_proto) {
   return "nadota";
 }
 
+string extraerNombreDNS(const u_char* data, int offset) {
+  string nombre = "";
+  int actual = offset;
+  
+  while (data[actual] != 0) {
+    int len = data[actual]; // Longitud de la etiqueta
+    actual++;
+    
+    for (int i = 0; i < len; i++) {
+      nombre += (char)data[actual + i];
+    }
+    actual += len;
+    
+    if (data[actual] != 0) nombre += "."; // Agregar punto entre etiquetas
+  }
+  return nombre;
+}
+
 // Funci+on encargada de organizar el paquete que llegó
 void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_char *pkt_data)
 {
@@ -235,6 +258,16 @@ void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_cha
     return; 
   }
 
+  string dominio = "";
+  bool es_dns = false;
+  if (sport == 53 || dport == 53) {
+    int offset_dns = 14 + ip_len + 8 + 12; // 12 bytes cabecera DNS fija
+    if (header->len > offset_dns) {
+      dominio = extraerNombreDNS(pkt_data, offset_dns);
+      es_dns = true;
+    }
+  }
+
   // Variables para guardar las direcciones y puertos después de traducir
   char src_ip[32], dst_ip[32];
   char src_puerto[32], dst_puerto[32];
@@ -255,12 +288,10 @@ void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_cha
 
     if (ih->proto == 17) { // UDP
       protocolo = asignar_protocolo(sport, dport, ih->proto);
-      PaqueteInfo_UDP nuevo_pkt = {id, timestr, (int)header->len, src_ip, dst_ip, protocolo, src_puerto, dst_puerto, ttl_value, mac_src_str, mac_dst_str, pkt_data, (int)header->len};
-      lista_paquetes.push_back(nuevo_pkt);
+      PaqueteInfo nuevo_pkt(id, timestr, (int)header->len, src_ip, dst_ip, protocolo, src_puerto, dst_puerto, ttl_value, mac_src_str, mac_dst_str, pkt_data, (int)header->len, dominio, es_dns);      lista_paquetes.push_back(nuevo_pkt);
     } else if (ih->proto == 6) {  // TCP
       protocolo = asignar_protocolo(sport, dport, ih->proto);
-      PaqueteInfo_TCP nuevo_pkt = {id, timestr, (int)header->len, src_ip, dst_ip, protocolo, src_puerto, dst_puerto, ttl_value, mac_src_str, mac_dst_str, pkt_data, (int)header->len};
-      lista_paquetes.push_back(nuevo_pkt);
+      PaqueteInfo nuevo_pkt(id, timestr, (int)header->len, src_ip, dst_ip, protocolo, src_puerto, dst_puerto, ttl_value, mac_src_str, mac_dst_str, pkt_data, (int)header->len, dominio, es_dns);      lista_paquetes.push_back(nuevo_pkt);
     } else {
       return; 
     }
