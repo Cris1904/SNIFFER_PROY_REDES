@@ -11,6 +11,7 @@
 #include "captura.h"
 
 #include <set>
+#include <map>
 
 using namespace std;
 
@@ -27,6 +28,16 @@ const char* lista_protocolos[] = {
   "TCP", "FTP (Data)", "FTP (Control)", "SSH / SFTP", "Telnet", "SMTP", "HTTP", 
   "POP3", "IMAP", "BGP", "LDAP", "HTTPS", "SMB", "SMTP (Seguro)", "LDAPS", "IMAPS"
 };
+
+ImU32 ObtenerColorProtocolo(const std::string& protocolo) {
+  if (protocolo == "TCP")   return ImGui::ColorConvertFloat4ToU32(ImVec4(0.2f, 0.5f, 0.9f, 0.25f)); // Azul
+  if (protocolo == "UDP")   return ImGui::ColorConvertFloat4ToU32(ImVec4(0.9f, 0.6f, 0.1f, 0.25f)); // Naranja
+  if (protocolo == "DNS")   return ImGui::ColorConvertFloat4ToU32(ImVec4(0.3f, 0.8f, 0.4f, 0.25f)); // Verde
+  if (protocolo == "HTTP")  return ImGui::ColorConvertFloat4ToU32(ImVec4(0.8f, 0.3f, 0.8f, 0.25f)); // Púrpura
+  if (protocolo == "HTTPS") return ImGui::ColorConvertFloat4ToU32(ImVec4(0.9f, 0.2f, 0.2f, 0.25f)); // Rojo
+  
+  return ImGui::ColorConvertFloat4ToU32(ImVec4(0.3f, 0.3f, 0.3f, 0.2f)); 
+}
 
 // ---- Menu de filtrado ----
 void menuFiltrado() {
@@ -267,6 +278,7 @@ int main()
       ImGui::Spacing();
 
       // mostramos un boton para iniciar la captura
+      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.7f, 0.3f, 1.0f)); // Verde
       if (ImGui::Button("Iniciar Captura", ImVec2(200, 30)))
       {
         // Creamos un hilo para que Npcap capture (le indicamos cual es la interfaz seleccionada)
@@ -274,7 +286,8 @@ int main()
         // Desenlazamos el hilo del flujo principal para que corra en segundo plano
         hilo_pcap.detach();
       }
-      ImGui::Spacing(); // salto de linea
+      ImGui::PopStyleColor();
+      ImGui::Spacing(); 
       menuFiltrado();   // mostramos menu para filtrar lo capturado
     }
     else
@@ -285,6 +298,7 @@ int main()
       ImGui::Spacing();
 
       // mostramos un boton para detener la captura
+      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.1f, 0.1f, 1.0f)); // Rojo
       if (ImGui::Button("Detener Captura", ImVec2(200, 30)))
       {
         if (adhandle_global != NULL)
@@ -293,6 +307,7 @@ int main()
           captura_activa = false;
         }
       }
+      ImGui::PopStyleColor();
       ImGui::Spacing();
 
       menuFiltrado(); // mostramos menu para filtrar lo capturado
@@ -331,6 +346,10 @@ int main()
         {
           // Salta de fila automaticamente para el nuevo paquete
           ImGui::TableNextRow();
+
+          // Agregar color a la fila dependiendo del protocolo del paquete
+          ImU32 color_fila = ObtenerColorProtocolo(pkt.protocolo);
+          ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, color_fila);
 
           // Convertimos el ID a texto para compararlo
           ImGui::TableSetColumnIndex(0);
