@@ -22,6 +22,7 @@ enum EstadoPantalla {
   SNIFFER
 };
 EstadoPantalla estado_actual = PANTALLA_INICIO;
+EstadoPantalla estado_anterior = PANTALLA_INICIO; // Variable para saber a dónde regresar
 
 // ---- Variables globales ----
 char ip_o[64] = "";
@@ -258,19 +259,24 @@ int main()
 
         float windowWidth = ImGui::GetWindowSize().x;
 
-        // Centramos verticalmente agregando espacio
-        ImGui::SetCursorPosY(viewportSize.y * 0.25f);
-
-        // Título del proyecto
+        // Título del proyecto (MÁS GRANDE Y HASTA ARRIBA)
+        ImGui::SetCursorPosY(20.0f); // Un margen muy pequeño arriba para que no pegue con el borde
         const char* titulo = "SNIFFER - PROYECTO DE REDES";
+        ImGui::SetWindowFontScale(2.0f); 
         float textWidth = ImGui::CalcTextSize(titulo).x;
         ImGui::SetCursorPosX((windowWidth - textWidth) * 0.5f);
         ImGui::TextUnformatted(titulo);
-        ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing();
+        ImGui::SetWindowFontScale(1.0f); 
+        
+        // Empujamos los botones hacia el centro de la pantalla
+        ImGui::SetCursorPosY(viewportSize.y * 0.35f); 
 
-        // Configuramos tamaño de los botones
-        float btnWidth = 250.0f;
-        float btnHeight = 50.0f;
+        // Configuramos tamaño de los botones 
+        float btnWidth = 300.0f;
+        float btnHeight = 60.0f;
+
+        // Aumentamos escala para los textos de los botones
+        ImGui::SetWindowFontScale(1.5f);
 
         // Botón para entrar al Sniffer
         ImGui::SetCursorPosX((windowWidth - btnWidth) * 0.5f);
@@ -285,9 +291,12 @@ int main()
         ImGui::SetCursorPosX((windowWidth - btnWidth) * 0.5f);
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0.4f, 1.0f)); // Gris
         if (ImGui::Button("Menu de Ayuda", ImVec2(btnWidth, btnHeight))) {
+            estado_anterior = PANTALLA_INICIO; // Guardamos que venimos del inicio
             estado_actual = VENTANA_AYUDA;
         }
         ImGui::PopStyleColor();
+        
+        ImGui::SetWindowFontScale(1.0f); // Restauramos la escala de la fuente
 
         ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing();
         
@@ -321,12 +330,24 @@ int main()
         ImGui::SetNextWindowSize(viewportSize);
         ImGui::Begin("Ventana de Ayuda", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
-        ImGui::Text("\t\t\tMENU DE AYUDA");
+        float windowWidthAyuda = ImGui::GetWindowSize().x;
+
+        // Título del menú de ayuda centrado y grande
+        ImGui::SetCursorPosY(20.0f);
+        const char* tituloAyuda = "MENU DE AYUDA";
+        ImGui::SetWindowFontScale(2.0f); 
+        float helpTextWidth = ImGui::CalcTextSize(tituloAyuda).x;
+        ImGui::SetCursorPosX((windowWidthAyuda - helpTextWidth) * 0.5f);
+        ImGui::TextUnformatted(tituloAyuda);
+        ImGui::SetWindowFontScale(1.0f); 
+
+        ImGui::Spacing(); ImGui::Spacing();
         ImGui::Text("Aquí especificaremos como usar el programa (pendiente).");
         ImGui::Spacing(); ImGui::Spacing();
 
-        if (ImGui::Button("Volver a Inicio", ImVec2(200, 40))) {
-            estado_actual = PANTALLA_INICIO;
+        // El texto ahora es simplemente "Volver" y su acción depende de 'estado_anterior'
+        if (ImGui::Button("Volver", ImVec2(200, 40))) {
+            estado_actual = estado_anterior; // Regresa a la ventana que llamó la ayuda
         }
 
         ImGui::End();
@@ -345,16 +366,32 @@ int main()
         ImGui::SetNextWindowSize(ImVec2(viewportSize.x - (padding * 2), altoControl));
         ImGui::Begin("Control de Sniffer", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
         
-        // Botón para regresar al inicio o a la ayuda desde el sniffer (Punto 3)
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-        if (ImGui::Button("Volver a Inicio")) {
-            estado_actual = PANTALLA_INICIO;
+        // Botones de navegación alineados a la derecha
+        float controlWindowWidth = ImGui::GetWindowSize().x;
+        float btnVolverWidth = 100.0f;
+        float btnAyudaWidth = 100.0f;
+        float espaciadoBotones = ImGui::GetStyle().ItemSpacing.x;
+        float margenDerecho = 15.0f;
+        
+        // Calculamos la posición en X para que ambos botones queden a la derecha
+        ImGui::SetCursorPosX(controlWindowWidth - btnVolverWidth - btnAyudaWidth - espaciadoBotones - margenDerecho);
+
+        // Colores Azules para los botones
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.5f, 0.9f, 1.0f));        
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.3f, 0.7f, 1.0f)); 
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.2f, 0.5f, 1.0f));  
+        
+        if (ImGui::Button("Volver", ImVec2(btnVolverWidth, 0))) {
+            estado_actual = PANTALLA_INICIO; // Si estamos en el sniffer, "Volver" lleva al inicio
         }
         ImGui::SameLine();
-        if (ImGui::Button("Ayuda")) {
+        if (ImGui::Button("Ayuda", ImVec2(btnAyudaWidth, 0))) {
+            estado_anterior = SNIFFER; // Guardamos que venimos del sniffer
             estado_actual = VENTANA_AYUDA;
         }
-        ImGui::PopStyleColor();
+        
+        ImGui::PopStyleColor(3); 
+        
         ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
 
         if (!captura_activa)
