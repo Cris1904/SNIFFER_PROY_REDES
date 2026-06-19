@@ -310,6 +310,7 @@ int main()
         const char* dev2 = "- Antonio Duron Mendoza";
         const char* dev3 = "- Ulises Raygoza Castaneda";
         const char* dev4 = "- Cristian de Jesus Vazquez Delgado";
+        const char* dev5 = "Correo de contacto: equipoumisumi4321@gmail.com";
 
         // Centramos los nombres basándonos en el más largo
         float maxDevWidth = ImGui::CalcTextSize(dev1).x;
@@ -322,33 +323,84 @@ int main()
         ImGui::SetCursorPosX((windowWidth - maxDevWidth) * 0.5f);
         ImGui::TextUnformatted(dev4);
 
+        // Agregamos un poco de espacio y centramos el correo
+        ImGui::Spacing(); ImGui::Spacing();
+        float dev5Width = ImGui::CalcTextSize(dev5).x;
+        ImGui::SetCursorPosX((windowWidth - dev5Width) * 0.5f);
+        ImGui::TextUnformatted(dev5);
+
         ImGui::End();
     } 
     else if (estado_actual == VENTANA_AYUDA) {
-        // --- PANTALLA DE AYUDA (Preparada para el Punto 2) ---
+        // --- PANTALLA DE AYUDA (Punto 2) ---
         ImGui::SetNextWindowPos(ImVec2(0, 0));
         ImGui::SetNextWindowSize(viewportSize);
         ImGui::Begin("Ventana de Ayuda", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
         float windowWidthAyuda = ImGui::GetWindowSize().x;
 
-        // Título del menú de ayuda centrado y grande
+        // Título del menú de ayuda centrado y aún más grande
         ImGui::SetCursorPosY(20.0f);
         const char* tituloAyuda = "MENU DE AYUDA";
-        ImGui::SetWindowFontScale(2.0f); 
+        ImGui::SetWindowFontScale(2.5f); // 2.5x para el título
         float helpTextWidth = ImGui::CalcTextSize(tituloAyuda).x;
         ImGui::SetCursorPosX((windowWidthAyuda - helpTextWidth) * 0.5f);
         ImGui::TextUnformatted(tituloAyuda);
-        ImGui::SetWindowFontScale(1.0f); 
 
-        ImGui::Spacing(); ImGui::Spacing();
-        ImGui::Text("Aquí especificaremos como usar el programa (pendiente).");
+        // AQUI ESTÁ EL CAMBIO: Aumentamos a 1.4x todo el texto de instrucciones
+        ImGui::SetWindowFontScale(1.4f); 
+
+        ImGui::Spacing(); ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
+
+        // Contenedor interno para las instrucciones (agrega scroll si la pantalla es muy pequeña)
+        ImGui::BeginChild("Instrucciones", ImVec2(0, viewportSize.y - 140.0f), false);
+        
+        ImGui::TextWrapped("Conoce tu Sniffer. Este programa te permite ver y analizar el tráfico de red. A continuación te explicamos cómo funciona cada sección para que aproveches al maximo sus funciones:");
         ImGui::Spacing(); ImGui::Spacing();
 
-        // El texto ahora es simplemente "Volver" y su acción depende de 'estado_anterior'
-        if (ImGui::Button("Volver", ImVec2(200, 40))) {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.2f, 0.7f, 0.3f, 1.0f)); // Verde
+        ImGui::Text("1. Control de Captura (Parte Superior)");
+        ImGui::PopStyleColor();
+        ImGui::BulletText("Interfaz de Red: Selecciona del menu desplegable el adaptador que quieres 'escuchar' (puede ser tu tarjeta Wi-Fi, Ethernet, etc.).");
+        ImGui::BulletText("Botones Iniciar/Detener: Haz clic en Iniciar para que el programa empiece a capturar datos en tiempo real y Detener para terminar la captura de trafico.");
+        ImGui::BulletText("Filtros: Puedes escribir o seleccionar IPs y protocolos (como DNS o HTTP) que te interesen para realizar tu trabajo con mas facilidad y rapidez.");
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.2f, 0.5f, 0.9f, 1.0f)); // Azul
+        ImGui::Text("2. Tabla de Paquetes Capturados (Parte Central)");
+        ImGui::PopStyleColor();
+        ImGui::BulletText("Aquí se enlista cada 'paquete' de información que viaja por la red.");
+        ImGui::BulletText("NOTA: puedes hacer clic izquierdo sobre cualquier fila de esta tabla para seleccionar un paquete específico y poder analizarlo en la seccion numero 3.");
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.3f, 0.8f, 1.0f)); // Púrpura
+        ImGui::Text("3. Análisis del Paquete (Parte Inferior)");
+        ImGui::PopStyleColor();
+        ImGui::BulletText("Detalles (Izquierda): Muestra el desglose técnico del paquete seleccionado. Puedes expandir cada capa haciendo clic en las flechitas.");
+        ImGui::BulletText("Bytes del Paquete (Derecha): Es la información en estado puro. Muestra los datos tal como viajan por la red en formato Hexadecimal (números y letras) y su traducción a texto legible (ASCII).");
+        
+        ImGui::BulletText("\nPara mas información, comunicate con los desarrolladores, mandando un correo a la cuenta gmail que aparece en la parte inferior del menu principal");
+
+        ImGui::EndChild();
+
+        // Configuramos la escala a 1.5x para que el botón de volver también se vea grande y amigable
+        ImGui::SetWindowFontScale(1.5f);
+
+        // Botón "Volver" centrado y hasta abajo
+        float btnVolverWidth = 200.0f;
+        float btnVolverHeight = 50.0f; // Aumentamos la altura a 50 para que quepa bien el texto grande
+        
+        // Posicionamos en Y restando el alto del boton y un margen
+        ImGui::SetCursorPosY(viewportSize.y - btnVolverHeight - 20.0f);
+        // Posicionamos en X al centro
+        ImGui::SetCursorPosX((windowWidthAyuda - btnVolverWidth) * 0.5f);
+
+        if (ImGui::Button("Volver", ImVec2(btnVolverWidth, btnVolverHeight))) {
             estado_actual = estado_anterior; // Regresa a la ventana que llamó la ayuda
         }
+
+        // Restauramos a tamaño normal para que en el siguiente frame no afecte a las otras ventanas
+        ImGui::SetWindowFontScale(1.0f);
 
         ImGui::End();
     }
