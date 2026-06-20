@@ -53,6 +53,7 @@ const char *lista_protocolos[] = {
 string extraerGUID(const string &nombre_npcap);
 string obtenerNombreConexion(const string &guid);
 string ansi_a_utf8(const string &texto_original);
+string determinarTipoAdaptador(const string &descripcion);
 ImU32 ObtenerColorProtocolo(const std::string &protocolo);
 void menuFiltrado();
 
@@ -102,16 +103,22 @@ int main()
 
       // Solicitamos a Windows el nombre real de esta red
       string nombre_red = obtenerNombreConexion(info.guid);
+      
+      // Verificamos si es una máquina virtual o loopback para ponerle una etiqueta
+      string etiqueta = determinarTipoAdaptador(info.descripcion);
+      if (!etiqueta.empty()) {
+          etiqueta += " "; // Agregamos un espacio de separación visual
+      }
 
-      // Verificamos si pudimos extraer el nombre, si si lo mostramos junto a la descripcion
+      // Verificamos si pudimos extraer el nombre, si si lo mostramos junto a la etiqueta y descripcion
       if (!nombre_red.empty())
       {
-        info.nombre_amigable = nombre_red + " | " + info.descripcion;
+        info.nombre_amigable = etiqueta + nombre_red + " | " + info.descripcion;
       }
       else
       {
-        // si la conexión no tiene nombre en el registro, solo mostramos la descripcion
-        info.nombre_amigable = "(Sin coincidencias) | " + info.descripcion;
+        // si la conexión no tiene nombre en el registro, mostramos la etiqueta y la descripcion
+        info.nombre_amigable = etiqueta + "(Sin nombre) | " + info.descripcion;
       }
 
       listaInterfaces.push_back(info);
@@ -143,8 +150,8 @@ int main()
     if (estado_actual == PANTALLA_INICIO)
     {
       // --- PANTALLA DE INICIO ---
-      ImGui::SetNextWindowPos(ImVec2(0, 0));
-      ImGui::SetNextWindowSize(viewportSize);
+      ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+      ImGui::SetNextWindowSize(viewportSize, ImGuiCond_Always);
       ImGui::Begin("Pantalla de Inicio", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBackground);
 
       float windowWidth = ImGui::GetWindowSize().x;
@@ -230,8 +237,8 @@ int main()
     else if (estado_actual == VENTANA_AYUDA)
     {
       // --- PANTALLA DE AYUDA ---
-      ImGui::SetNextWindowPos(ImVec2(0, 0));
-      ImGui::SetNextWindowSize(viewportSize);
+      ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+      ImGui::SetNextWindowSize(viewportSize, ImGuiCond_Always);
       ImGui::Begin("Ventana de Ayuda", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
       float windowWidthAyuda = ImGui::GetWindowSize().x;
@@ -278,9 +285,8 @@ int main()
       ImGui::PopStyleColor();
       ImGui::BulletText("Detalles (Izquierda): Muestra el desglose técnico del paquete seleccionado. Puedes expandir cada capa haciendo clic en las flechitas.");
       ImGui::BulletText("Bytes del Paquete (Derecha): Es la información en estado puro. Muestra los datos tal como viajan por la red en formato Hexadecimal (números y letras) y su traducción a texto legible (ASCII).");
-
-      ImGui::BulletText("\nPara mas información, comunicate con los desarrolladores, mandando un correo a la cuenta gmail que aparece en la parte inferior del menu principal");
-
+      ImGui::Text("\n\nPara mas información, comunicate con los desarrolladores, mandando un correo a la cuenta gmail que aparece en la parte inferior del menu principal");
+      
       ImGui::EndChild();
 
       ImGui::SetWindowFontScale(1.5f);
@@ -310,8 +316,9 @@ int main()
       float altoTabla = viewportSize.y * 0.45f;
       float altoAnalisis = viewportSize.y * 0.3f;
 
-      ImGui::SetNextWindowPos(ImVec2(padding, padding));
-      ImGui::SetNextWindowSize(ImVec2(viewportSize.x - (padding * 2), altoControl));
+      // ImGuiCond_Always fuerza matematicamente la posicion para evitar conflictos con archivos .ini
+      ImGui::SetNextWindowPos(ImVec2(padding, padding), ImGuiCond_Always);
+      ImGui::SetNextWindowSize(ImVec2(viewportSize.x - (padding * 2), altoControl), ImGuiCond_Always);
       ImGui::Begin("Control de Sniffer", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
       float controlWindowWidth = ImGui::GetWindowSize().x;
@@ -418,8 +425,8 @@ int main()
       ImGui::End();
 
       // iniciamos la segunda seccion grafica donde se muestra todo el trafico capturado
-      ImGui::SetNextWindowPos(ImVec2(padding, padding + altoControl + padding));
-      ImGui::SetNextWindowSize(ImVec2(viewportSize.x - (padding * 2), altoTabla));
+      ImGui::SetNextWindowPos(ImVec2(padding, padding + altoControl + padding), ImGuiCond_Always);
+      ImGui::SetNextWindowSize(ImVec2(viewportSize.x - (padding * 2), altoTabla), ImGuiCond_Always);
       ImGui::Begin("Paquetes Capturados", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
       if (ImGui::BeginTable("TablaPaquetes", 8, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY))
@@ -457,7 +464,6 @@ int main()
               idPaqueteSeleccionado = pkt.id;
             }
 
-            ImGui::TableSetColumnIndex(0);
             ImGui::TableSetColumnIndex(1);
             ImGui::Text("%s", pkt.tiempo_vida.c_str());
             ImGui::TableSetColumnIndex(2);
@@ -525,8 +531,8 @@ int main()
       ImGui::End();
 
       // iniciamos la tercera seccion grafica donde se analiza cada uno de los paquetes del trafico
-      ImGui::SetNextWindowPos(ImVec2(padding, padding + altoControl + padding + altoTabla + padding));
-      ImGui::SetNextWindowSize(ImVec2(viewportSize.x - (padding * 2), altoAnalisis));
+      ImGui::SetNextWindowPos(ImVec2(padding, padding + altoControl + padding + altoTabla + padding), ImGuiCond_Always);
+      ImGui::SetNextWindowSize(ImVec2(viewportSize.x - (padding * 2), altoAnalisis), ImGuiCond_Always);
       ImGui::Begin("Analisis del paquete", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
       if (ImGui::BeginTable("TablaDetalles", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY))
@@ -725,6 +731,23 @@ string ansi_a_utf8(const string &texto_original)
   WideCharToMultiByte(CP_UTF8, 0, &texto_intermedio[0], (int)texto_intermedio.size(), &texto_traducido[0], tamano_utf8, NULL, NULL);
 
   return texto_traducido;
+}
+
+//-------Funcion para identificar si el adaptador es de una maquina virtual o loopback---------
+string determinarTipoAdaptador(const string &descripcion)
+{
+  string desc_lower = descripcion;
+  // Convertimos toda la descripcion a minusculas para buscar las palabras clave mas facil
+  for (char &c : desc_lower) {
+      c = tolower(c);
+  }
+
+  if (desc_lower.find("virtualbox") != string::npos) return "[VirtualBox]";
+  if (desc_lower.find("vmware") != string::npos) return "[VMware]";
+  if (desc_lower.find("loopback") != string::npos) return "[Loopback]";
+  if (desc_lower.find("virtual") != string::npos) return "[Virtual]";
+  
+  return ""; // No agregamos etiqueta extra si parece ser un adaptador físico normal
 }
 
 //----------------------------------------------------------------------------------------------------------------
