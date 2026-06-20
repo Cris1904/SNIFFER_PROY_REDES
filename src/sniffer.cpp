@@ -19,6 +19,7 @@ using namespace std;
 struct InterfazRedInfo {
     string nombre_original; // Guarda el identificador interno de Windows (\Device\NPF_{GUID})
     string descripcion;     // Guarda la descripción cruda de Npcap (Realtek PCIe GbE...)
+    string guid;            // Identificador único extraído para buscar su nombre en el registro
     string nombre_amigable; // Aquí guardaremos el nombre amigable para el usuario (Wi-Fi)
 };
 
@@ -44,6 +45,15 @@ const char* lista_protocolos[] = {
   "TCP", "FTP (Data)", "FTP (Control)", "SSH / SFTP", "Telnet", "SMTP", "HTTP", 
   "POP3", "IMAP", "BGP", "LDAP", "HTTPS", "SMB", "SMTP (Seguro)", "LDAPS", "IMAPS"
 };
+
+// Función para extraer unicamente el GUID de la cadena que nos devuelve Npcap
+string extraerGUID(const string& nombre_npcap) {
+    size_t pos = nombre_npcap.find("{");
+    if (pos != string::npos) {
+        return nombre_npcap.substr(pos);
+    }
+    return "";
+}
 
 ImU32 ObtenerColorProtocolo(const std::string& protocolo) {
   if (protocolo == "TCP")   return ImGui::ColorConvertFloat4ToU32(ImVec4(0.2f, 0.5f, 0.9f, 0.25f)); // Azul
@@ -217,7 +227,7 @@ int main()
   ImGui_ImplGlfw_InitForOpenGL(ventana, true);
   ImGui_ImplOpenGL3_Init(glsl_version);
 
-  // Obtenemos las interfaces disponibles y utilizamos la nueva estructura para almacenar su información
+  // Obtenemos las interfaces disponibles y utilizamos la estructura para almacenar su información
   vector<InterfazRedInfo> listaInterfaces;
   pcap_if_t *alldevs;
   char errbuf[PCAP_ERRBUF_SIZE];
@@ -229,9 +239,12 @@ int main()
       InterfazRedInfo info;
       info.nombre_original = d->name ? d->name : "";
       info.descripcion = d->description ? d->description : "Sin descripción";
-      // Preparamos temporalmente el nombre amigable concatenando la descripcion que obtenemos.
-      // Nota: luego reemplazaremos este codigo para extraer el registro real de Windows.
-      info.nombre_amigable = "[Nombre amigable] " + info.descripcion; 
+      
+      // Extraemos solo el GUID entre llaves
+      info.guid = extraerGUID(info.nombre_original);
+
+      // Mostramos temporalmente el GUID junto a la descripción para verificar la extraccion
+      info.nombre_amigable = info.guid + " | " + info.descripcion ; 
 
       listaInterfaces.push_back(info);
     }
