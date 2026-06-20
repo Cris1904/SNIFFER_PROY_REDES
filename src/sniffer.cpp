@@ -347,7 +347,7 @@ int main()
         ImGui::SetCursorPosX((windowWidthAyuda - helpTextWidth) * 0.5f);
         ImGui::TextUnformatted(tituloAyuda);
 
-        // AQUI ESTÁ EL CAMBIO: Aumentamos a 1.4x todo el texto de instrucciones
+        // Aumentamos a 1.4x todo el texto de instrucciones
         ImGui::SetWindowFontScale(1.4f); 
 
         ImGui::Spacing(); ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing();
@@ -433,9 +433,25 @@ int main()
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.3f, 0.7f, 1.0f)); 
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.2f, 0.5f, 1.0f));  
         
-        if (ImGui::Button("Volver", ImVec2(btnVolverWidth, 0))) {
-            estado_actual = PANTALLA_INICIO; // Si estamos en el sniffer, "Volver" lleva al inicio
+        // --- Fragmento de codigo para habilitar y deshabiliar el boton "volver" mientras se captura trafico en el sniffer ---
+        if (captura_activa) {
+            ImGui::BeginDisabled(); // Desactiva el botón si está capturando
         }
+
+        if (ImGui::Button("Volver", ImVec2(btnVolverWidth, 0))) {
+            estado_actual = PANTALLA_INICIO; // Si estamos en el sniffer y no hay captura, el boton "volver" lleva al inicio
+        }
+
+        if (captura_activa) {
+            ImGui::EndDisabled(); // Terminamos la zona desactivada (para no afectar otros botones)
+
+            // Mostramos un mensajito si intentan interactuar con el botón desactivado
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                ImGui::SetTooltip("Por favor, deten la captura de trafico antes de volver al menu principal.");
+            }
+        }
+        // --- Fin de la proteccion del boton "volver" dentro del sniffer ---
+
         ImGui::SameLine();
         if (ImGui::Button("Ayuda", ImVec2(btnAyudaWidth, 0))) {
             estado_anterior = SNIFFER; // Guardamos que venimos del sniffer
