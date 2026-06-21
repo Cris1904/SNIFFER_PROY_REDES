@@ -57,6 +57,7 @@ string obtenerNombreConexion(const string &guid);
 string ansi_a_utf8(const string &texto_original);
 string determinarTipoAdaptador(const string &descripcion);
 ImU32 ObtenerColorProtocolo(const std::string &protocolo);
+string obtenerTipoIP(const string& ip);
 void menuFiltrado();
 
 //---------------------------------INICIO DE LA FUNCIÓN PRINCIPAL--------------------------------------------------------------------
@@ -631,8 +632,18 @@ int main()
             ImGui::Text("%d", pkt.longitud);
             ImGui::TableSetColumnIndex(3);
             ImGui::Text("%s", pkt.IP_origen.c_str());
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("%s", obtenerTipoIP(pkt.IP_origen).c_str());
+                ImGui::EndTooltip();
+            }
             ImGui::TableSetColumnIndex(4);
             ImGui::Text("%s", pkt.IP_destino.c_str());
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("%s", obtenerTipoIP(pkt.IP_destino).c_str());
+                ImGui::EndTooltip();
+            }
             ImGui::TableSetColumnIndex(5);
             ImGui::Text("%s", pkt.protocolo.c_str());
             if (ImGui::IsItemHovered()) {
@@ -938,7 +949,7 @@ string determinarTipoAdaptador(const string &descripcion)
   return ""; // No agregamos etiqueta extra si parece ser un adaptador físico normal
 }
 
-//----------------------------------------------------------------------------------------------------------------
+// Funcion para asignar un color a cada protocolo
 ImU32 ObtenerColorProtocolo(const std::string &protocolo)
 {
   if (protocolo == "TCP")
@@ -953,6 +964,30 @@ ImU32 ObtenerColorProtocolo(const std::string &protocolo)
     return ImGui::ColorConvertFloat4ToU32(ImVec4(0.9f, 0.2f, 0.2f, 0.25f)); // Rojo
 
   return ImGui::ColorConvertFloat4ToU32(ImVec4(0.3f, 0.3f, 0.3f, 0.2f));
+}
+
+// Función para identificar si una IP es pública, privada, loopback, etc.
+string obtenerTipoIP(const string& ip) {
+    if (ip == "N/A" || ip.empty()) return "IP no disponible.";
+    if (ip == "255.255.255.255") return "Direccion de Broadcast (Envia datos a toda la red local).";
+
+    int o1, o2, o3, o4;
+    // Extraemos los 4 octetos matematicamente para analizarlos
+    if (sscanf_s(ip.c_str(), "%d.%d.%d.%d", &o1, &o2, &o3, &o4) == 4) {
+        // Rangos de IP Privada
+        if (o1 == 10) return "IP Privada (Clase A - Comun en redes empresariales o virtuales).";
+        if (o1 == 172 && (o2 >= 16 && o2 <= 31)) return "IP Privada (Clase B - Red local).";
+        if (o1 == 192 && o2 == 168) return "IP Privada (Clase C - Red local casera tipica).";
+        
+        // Direcciones especiales
+        if (o1 == 127) return "Direccion Loopback (Trafico interno de tu propia maquina).";
+        if (o1 == 169 && o2 == 254) return "Direccion Link-Local (APIPA - Asignada cuando no hay internet/DHCP).";
+        if (o1 >= 224 && o1 <= 239) return "Direccion Multicast (Transmision a un grupo especifico de equipos).";
+
+        // Si no es ninguna de las anteriores, es pública
+        return "IP Publica (Servidor o equipo de Internet, visible globalmente).";
+    }
+    return "Direccion IP de red.";
 }
 
 //----------------Menu de filtrado -------------------------------------------------------------------------------
