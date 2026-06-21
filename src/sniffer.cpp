@@ -144,7 +144,61 @@ int main()
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+    static bool mostrar_editor_estilos = false;
 
+    if (estado_actual == SNIFFER) {
+        
+        if (ImGui::BeginMainMenuBar()) {
+            if (ImGui::BeginMenu("Apariencia y Ajustes")) {
+                
+                if (ImGui::BeginMenu("Temas (Colores)")) {
+                    if (ImGui::MenuItem("Tema Oscuro")) ImGui::StyleColorsDark();
+                    if (ImGui::MenuItem("Tema Claro")) ImGui::StyleColorsLight();
+                    if (ImGui::MenuItem("Tema Clasico")) ImGui::StyleColorsClassic();
+                    ImGui::EndMenu();
+                }
+
+                ImGui::Separator();
+
+                if (ImGui::BeginMenu("Tamano de letra")) {
+                    static float escala_letra = 1.0f;
+                    
+                    ImGui::Text("Zoom actual: %.1fx", escala_letra);
+                    ImGui::Separator();
+
+                    if (ImGui::Button("Aumentar (+)", ImVec2(150, 0))) {
+                        if (escala_letra < 2.0f) escala_letra += 0.1f;
+                        ImGui::GetIO().FontGlobalScale = escala_letra;
+                    }
+                    if (ImGui::Button("Reducir (-)", ImVec2(150, 0))) {
+                        if (escala_letra > 0.6f) escala_letra -= 0.1f;
+                        ImGui::GetIO().FontGlobalScale = escala_letra;
+                    }
+                    if (ImGui::Button("Restablecer a normal", ImVec2(150, 0))) {
+                        escala_letra = 1.0f;
+                        ImGui::GetIO().FontGlobalScale = 1.0f;
+                    }
+                    ImGui::EndMenu();
+                }
+
+                ImGui::Separator();
+                
+                // ¡Esta es el arma secreta para el profe!
+                ImGui::Checkbox("Abrir editor avanzado de ImGui", &mostrar_editor_estilos);
+
+                ImGui::EndMenu();
+            }
+            ImGui::EndMainMenuBar();
+        }
+
+        // Si la palomita está marcada, ImGui dibuja su ventana de configuración 
+        if (mostrar_editor_estilos) {
+            ImGui::Begin("Editor de Estilos", &mostrar_editor_estilos);
+            ImGui::ShowStyleEditor();
+            ImGui::End();
+        }
+        
+    }
     // Obtener el tamaño actual de la ventana
     ImVec2 viewportSize = ImGui::GetIO().DisplaySize;
 
@@ -313,7 +367,7 @@ int main()
     {
       // --- PANTALLA PRINCIPAL DEL SNIFFER ---
 
-      float padding = 10.0f;
+      float padding = 30.0f;
       float altoControl = viewportSize.y * 0.2f;
       float altoTabla = viewportSize.y * 0.45f;
       float altoAnalisis = viewportSize.y * 0.3f;
