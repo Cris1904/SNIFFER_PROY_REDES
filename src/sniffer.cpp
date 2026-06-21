@@ -9,6 +9,7 @@
 
 #include <thread>
 #include <vector>
+#include <fstream>
 #include <string>
 #include "captura.h"
 
@@ -452,6 +453,47 @@ int main()
           ImGui::Checkbox("Puerto Destino", &col_puerto_d);
           ImGui::Separator();
           ImGui::Spacing();
+          if (ImGui::Button("Exportar", ImVec2(120, 0))) {
+              ofstream archivo("captura_trafico.csv");
+              if (archivo.is_open()) {
+                  string cabecera = "";
+                  if (col_id) cabecera += "Numero,";
+                  if (col_tiempo) cabecera += "Tiempo,";
+                  if (col_longitud) cabecera += "Longitud,";
+                  if (col_ip_o) cabecera += "IP Origen,";
+                  if (col_ip_d) cabecera += "IP Destino,";
+                  if (col_proto) cabecera += "Protocolo,";
+                  if (col_puerto_o) cabecera += "Puerto Origen,";
+                  if (col_puerto_d) cabecera += "Puerto Destino,";
+                  
+                  if (!cabecera.empty()) cabecera.pop_back();
+                  archivo << cabecera << "\n";
+
+                  //Extraemos los datos paquete por paquete
+                  paquetes_mutex.lock(); // Bloqueamos para leer seguro
+                  for (const auto& pkt : lista_paquetes) {
+                      string linea = "";
+                      if (col_id) linea += to_string(pkt.id) + ",";
+                      if (col_tiempo) linea += pkt.tiempo_vida + ",";
+                      if (col_longitud) linea += to_string(pkt.longitud) + ",";
+                      if (col_ip_o) linea += pkt.IP_origen + ",";
+                      if (col_ip_d) linea += pkt.IP_destino + ",";
+                      if (col_proto) linea += pkt.protocolo + ",";
+                      if (col_puerto_o) linea += pkt.Puerto_origen + ",";
+                      if (col_puerto_d) linea += pkt.Puerto_destino + ",";
+                      
+                      if (!linea.empty()) linea.pop_back(); // Quitamos la última coma
+                      archivo << linea << "\n";
+                  }
+                  paquetes_mutex.unlock();
+                  
+                  archivo.close();
+              }
+              ImGui::CloseCurrentPopup();
+          }
+
+          ImGui::SameLine(); //botón cancelar a un lado
+
           if (ImGui::Button("Cancelar", ImVec2(120, 0))) {
               ImGui::CloseCurrentPopup();
           }
