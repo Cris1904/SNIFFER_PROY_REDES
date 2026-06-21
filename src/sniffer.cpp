@@ -434,11 +434,24 @@ int main()
           abrir_modal_exportar = false;
       }
 
+      static bool col_id = true, col_tiempo = true, col_longitud = true;
+      static bool col_ip_o = true, col_ip_d = true, col_proto = true;
+      static bool col_puerto_o = true, col_puerto_d = true;
+
       if (ImGui::BeginPopupModal("Exportar a CSV", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
           ImGui::Text("Selecciona las columnas a exportar:");
           ImGui::Separator();
           ImGui::Spacing();
-
+          ImGui::Checkbox("Numero de paquete", &col_id);
+          ImGui::Checkbox("Tiempo de vida", &col_tiempo);
+          ImGui::Checkbox("Longitud (Bytes)", &col_longitud);
+          ImGui::Checkbox("IP Origen", &col_ip_o);
+          ImGui::Checkbox("IP Destino", &col_ip_d);
+          ImGui::Checkbox("Protocolo", &col_proto);
+          ImGui::Checkbox("Puerto Origen", &col_puerto_o);
+          ImGui::Checkbox("Puerto Destino", &col_puerto_d);
+          ImGui::Separator();
+          ImGui::Spacing();
           if (ImGui::Button("Cancelar", ImVec2(120, 0))) {
               ImGui::CloseCurrentPopup();
           }
