@@ -407,56 +407,60 @@ int main()
       ImGui::SetNextWindowSize(ImVec2(viewportSize.x - (padding * 2), altoControl), ImGuiCond_Always);
       ImGui::Begin("Control de Sniffer", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
-      float controlWindowWidth = ImGui::GetWindowSize().x;
-      float btnVolverWidth = 100.0f;
-      float btnAyudaWidth = 100.0f;
-      float btnExportarWidth = 120.0f; 
-      float espaciadoBotones = ImGui::GetStyle().ItemSpacing.x;
-      float margenDerecho = 15.0f;
+      ImGui::SameLine(); 
 
-      ImGui::SetCursorPosX(controlWindowWidth - btnVolverWidth - btnAyudaWidth - btnExportarWidth - (espaciadoBotones * 2) - margenDerecho);
+      float controlWindowWidth = ImGui::GetWindowSize().x;
+      float espaciadoBotones = ImGui::GetStyle().ItemSpacing.x;
+      float margenDerecho = 25.0f;
+      
+
+      float w_volver = 90.0f;
+      float w_ayuda = 90.0f;
+      float w_stats = 110.0f;
+      float w_export = 110.0f;
+
+      ImGui::SetCursorPosX(controlWindowWidth - w_volver - w_ayuda - w_stats - w_export - (espaciadoBotones * 3) - margenDerecho);
 
       ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.5f, 0.9f, 1.0f));
       ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.3f, 0.7f, 1.0f));
       ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.2f, 0.5f, 1.0f));
 
-      // Habilitar o deshabilitar el boton "volver" para evitar cierres accidentales durante la captura
-      if (captura_activa)
-      {
+      bool esta_deshabilitado = captura_activa; 
+      if (esta_deshabilitado) {
         ImGui::BeginDisabled();
       }
 
-      if (ImGui::Button("Volver", ImVec2(btnVolverWidth, 0)))
-      {
+      if (ImGui::Button("Volver", ImVec2(w_volver, 0))) {
         estado_actual = PANTALLA_INICIO;
       }
 
-      if (captura_activa)
-      {
+      if (esta_deshabilitado) {
         ImGui::EndDisabled();
-
-        // Mensaje flotante indicando por qué está deshabilitado
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-        {
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
           ImGui::SetTooltip("Por favor, deten la captura de trafico antes de volver al menu principal.");
         }
       }
 
       ImGui::SameLine();
-      if (ImGui::Button("Ayuda", ImVec2(btnAyudaWidth, 0)))
-      {
+      if (ImGui::Button("Ayuda", ImVec2(w_ayuda, 0))) {
         estado_anterior = SNIFFER;
         estado_actual = VENTANA_AYUDA;
       }
 
+
+      ImGui::SameLine();
+      static bool mostrar_estadisticas = false; 
+      if (ImGui::Button("Estadisticas", ImVec2(w_stats, 0))) {
+          mostrar_estadisticas = !mostrar_estadisticas; 
+      }
+
       ImGui::SameLine();
       static bool abrir_modal_exportar = false;
-      if (ImGui::Button("Exportar CSV", ImVec2(btnExportarWidth, 0))) {
+      if (ImGui::Button("Exportar CSV", ImVec2(w_export, 0))) {
           abrir_modal_exportar = true;
       }
 
       ImGui::PopStyleColor(3);
-
       ImGui::Spacing();
       ImGui::Separator();
       ImGui::Spacing();
@@ -585,6 +589,59 @@ int main()
           ImGui::EndPopup();
       }
       ImGui::End();
+
+      // Panel de estadísticas
+      if (mostrar_estadisticas) {
+          ImGui::Begin("Gráfico de Trafico", &mostrar_estadisticas, ImGuiWindowFlags_AlwaysAutoResize);
+          
+          map<string, int> conteo_protocolos;
+          int total_paquetes = 0;
+
+          paquetes_mutex.lock();
+          total_paquetes = lista_paquetes.size();
+          for (const auto& pkt : lista_paquetes) {
+              conteo_protocolos[pkt.protocolo]++; 
+          }
+          paquetes_mutex.unlock();
+
+          //Dibujamos la interfaz
+          if (total_paquetes > 0) {
+              ImGui::Text("Total de paquetes en la red: %d", total_paquetes);
+              ImGui::Separator();
+              ImGui::Spacing();
+
+              // Recorremos nuestro mapa de resultados
+              for (auto const& [proto, count] : conteo_protocolos) {
+                  float porcentaje = (float)count / total_paquetes;
+                  
+                  // Texto alineado a la izquierda
+                  ImGui::Text("%s:", proto.c_str());
+                  
+                  // Texto centrado 
+                  ImGui::SameLine(120.0f); 
+                  ImGui::Text("%d (%.1f%%)", count, porcentaje * 100.0f);
+                  
+                  // Barra a la derecha
+                  ImGui::SameLine(240.0f); 
+                  
+                  // Usamos tu función para obtener el color del protocolo y le subimos la opacidad al 100% para la barra
+                  ImVec4 color_barra = ImGui::ColorConvertU32ToFloat4(ObtenerColorProtocolo(proto));
+                  color_barra.w = 1.0f; 
+                  
+                  ImGui::PushStyleColor(ImGuiCol_PlotHistogram, color_barra);
+                  
+                  // Dibujamos el rectángulo de la gráfica
+                  ImGui::ProgressBar(porcentaje, ImVec2(250.0f, 15.0f), "");
+                  
+                  ImGui::PopStyleColor();
+              }
+          } else {
+              ImGui::TextColored(ImVec4(0.8f, 0.2f, 0.2f, 1.0f), "Aun no hay trafico capturado para graficar.");
+          }
+          
+          ImGui::End();
+      }
+
 
       // iniciamos la segunda seccion grafica donde se muestra todo el trafico capturado
       ImGui::SetNextWindowPos(ImVec2(padding, menu_offset + (padding * 2) + altoControl), ImGuiCond_Always);
