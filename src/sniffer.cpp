@@ -44,6 +44,7 @@ char proto[64] = "";
 char puerto_d[64] = "";
 int idPaqueteSeleccionado = -1;
 static int protocolo_combo_idx = 0;
+bool filtro_condicion_y = true;
 
 const char *lista_protocolos[] = {
     "Todos", "UDP", "DNS", "DHCP (Server)", "DHCP (Client)", "TFTP", "NTP", "SNMP", "Syslog",
@@ -869,6 +870,16 @@ void menuFiltrado()
   paquetes_mutex.unlock();
 
   ImGui::Text("Filtrado de paquetes");
+  ImGui::SameLine();
+  
+  if (filtro_condicion_y) {
+      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f)); 
+      if (ImGui::Button("Todos los filtros")) filtro_condicion_y = false;
+  } else {
+      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.4f, 0.0f, 1.0f)); 
+      if (ImGui::Button("Cualquiera de los filtros")) filtro_condicion_y = true;
+  }
+  ImGui::PopStyleColor();
 
   ImGui::Text("IP Origen:");
   ImGui::SameLine();
