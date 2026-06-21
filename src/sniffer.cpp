@@ -62,6 +62,7 @@ string determinarTipoAdaptador(const string &descripcion);
 ImU32 ObtenerColorProtocolo(const std::string &protocolo);
 string obtenerTipoIP(const string& ip);
 void menuFiltrado();
+void StyleColorsUmisumi();
 
 //---------------------------------INICIO DE LA FUNCIÓN PRINCIPAL--------------------------------------------------------------------
 int main()
@@ -85,12 +86,12 @@ int main()
 
   // --- INTENTO 2: Modo de compatibilidad para Máquina Virtual (OpenGL 3.0) ---
   if (ventana == NULL) {
-    printf("Aviso: La VM no soporta OpenGL 3.3. Intentando Modo Compatibilidad (3.0)...\n");
+    printf("Aviso: La VM no soporta OpenGL 3.3. Intentando Modo Compartibilidad (3.0)...\n");
     glfwDefaultWindowHints(); 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
     glsl_version = "#version 130"; 
-    ventana = glfwCreateWindow(1280, 720, "Sniffer - Proyecto de Redes (Modo Compatibilidad)", NULL, NULL);
+    ventana = glfwCreateWindow(1280, 720, "Sniffer - Proyecto de Redes (Modo Compartibilidad)", NULL, NULL);
   }
 
   // --- INTENTO 3: Modo seguro (Dejar que el driver básico de la maquina decida) ---
@@ -139,7 +140,7 @@ int main()
   ImGui::CreateContext();
   ImGuiIO &io = ImGui::GetIO();
   (void)io;
-  ImGui::StyleColorsClassic();
+  StyleColorsUmisumi();
 
   ImGuiStyle& style = ImGui::GetStyle();
   
@@ -153,15 +154,6 @@ int main()
   style.WindowPadding = ImVec2(15, 15);
   style.FramePadding = ImVec2(8, 4);
   style.ItemSpacing = ImVec2(10, 8);
-
-  // Paleta de colores 
-  ImVec4* colors = style.Colors;
-  colors[ImGuiCol_WindowBg]       = ImVec4(0.12f, 0.12f, 0.14f, 1.00f);
-  colors[ImGuiCol_FrameBg]        = ImVec4(0.20f, 0.20f, 0.24f, 1.00f);
-  colors[ImGuiCol_FrameBgHovered] = ImVec4(0.28f, 0.28f, 0.32f, 1.00f);
-  colors[ImGuiCol_Header]         = ImVec4(0.25f, 0.45f, 0.85f, 0.80f);
-  colors[ImGuiCol_Button]         = ImVec4(0.25f, 0.45f, 0.85f, 1.00f);
-  colors[ImGuiCol_ButtonHovered]  = ImVec4(0.35f, 0.55f, 0.95f, 1.00f);
 
   // Inicializamos los backends
   ImGui_ImplGlfw_InitForOpenGL(ventana, true);
@@ -227,56 +219,57 @@ int main()
     static bool mostrar_editor_estilos = false;
 
     if (estado_actual == SNIFFER) {
-        
-        if (ImGui::BeginMainMenuBar()) {
-            if (ImGui::BeginMenu("Apariencia y Ajustes")) {
-                
-                if (ImGui::BeginMenu("Temas (Colores)")) {
-                    if (ImGui::MenuItem("Tema Oscuro")) ImGui::StyleColorsDark();
-                    if (ImGui::MenuItem("Tema Claro")) ImGui::StyleColorsLight();
-                    if (ImGui::MenuItem("Tema Clasico")) ImGui::StyleColorsClassic();
-                    ImGui::EndMenu();
-                }
+      
+      if (ImGui::BeginMainMenuBar()) {
+        if (ImGui::BeginMenu("Apariencia y Ajustes")) {
+          
+          if (ImGui::BeginMenu("Temas (Colores)")) {
+            if (ImGui::MenuItem("Tema Personalizado")) StyleColorsUmisumi();
+            if (ImGui::MenuItem("Tema Oscuro")) ImGui::StyleColorsDark();
+            if (ImGui::MenuItem("Tema Claro")) ImGui::StyleColorsLight();
+            if (ImGui::MenuItem("Tema Clasico")) ImGui::StyleColorsClassic();
+            ImGui::EndMenu();
+          }
 
-                ImGui::Separator();
+          ImGui::Separator();
 
-                if (ImGui::BeginMenu("Tamano de letra")) {
-                    static float escala_letra = 1.0f;
-                    
-                    ImGui::Text("Zoom actual: %.1fx", escala_letra);
-                    ImGui::Separator();
+          if (ImGui::BeginMenu("Tamano de letra")) {
+            static float escala_letra = 1.0f;
+            
+            ImGui::Text("Zoom actual: %.1fx", escala_letra);
+            ImGui::Separator();
 
-                    if (ImGui::Button("Aumentar (+)", ImVec2(150, 0))) {
-                        if (escala_letra < 2.0f) escala_letra += 0.1f;
-                        ImGui::GetIO().FontGlobalScale = escala_letra;
-                    }
-                    if (ImGui::Button("Reducir (-)", ImVec2(150, 0))) {
-                        if (escala_letra > 0.6f) escala_letra -= 0.1f;
-                        ImGui::GetIO().FontGlobalScale = escala_letra;
-                    }
-                    if (ImGui::Button("Restablecer a normal", ImVec2(150, 0))) {
-                        escala_letra = 1.0f;
-                        ImGui::GetIO().FontGlobalScale = 1.0f;
-                    }
-                    ImGui::EndMenu();
-                }
-
-                ImGui::Separator();
-                
-                // ¡Esta es el arma secreta para el profe!
-                ImGui::Checkbox("Abrir editor avanzado de ImGui", &mostrar_editor_estilos);
-
-                ImGui::EndMenu();
+            if (ImGui::Button("Aumentar (+)", ImVec2(150, 0))) {
+              if (escala_letra < 2.0f) escala_letra += 0.1f;
+              ImGui::GetIO().FontGlobalScale = escala_letra;
             }
-            ImGui::EndMainMenuBar();
-        }
+            if (ImGui::Button("Reducir (-)", ImVec2(150, 0))) {
+              if (escala_letra > 0.6f) escala_letra -= 0.1f;
+              ImGui::GetIO().FontGlobalScale = escala_letra;
+            }
+            if (ImGui::Button("Restablecer a normal", ImVec2(150, 0))) {
+              escala_letra = 1.0f;
+              ImGui::GetIO().FontGlobalScale = 1.0f;
+            }
+            ImGui::EndMenu();
+          }
 
-        // Si la palomita está marcada, ImGui dibuja su ventana de configuración 
-        if (mostrar_editor_estilos) {
-            ImGui::Begin("Editor de Estilos", &mostrar_editor_estilos);
-            ImGui::ShowStyleEditor();
-            ImGui::End();
+          ImGui::Separator();
+          
+          // ¡Esta es el arma secreta para el profe!
+          ImGui::Checkbox("Abrir editor avanzado de ImGui", &mostrar_editor_estilos);
+
+          ImGui::EndMenu();
         }
+        ImGui::EndMainMenuBar();
+      }
+
+      // Si la palomita está marcada, ImGui dibuja su ventana de configuración 
+      if (mostrar_editor_estilos) {
+        ImGui::Begin("Editor de Estilos", &mostrar_editor_estilos);
+        ImGui::ShowStyleEditor();
+        ImGui::End();
+      }
         
     }
     // Obtener el tamaño actual de la ventana
@@ -288,21 +281,29 @@ int main()
       // --- PANTALLA DE INICIO ---
       ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
       ImGui::SetNextWindowSize(viewportSize, ImGuiCond_Always);
-      ImGui::Begin("Pantalla de Inicio", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBackground);
+      
+      ImGui::Begin("Pantalla de Inicio", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
       float windowWidth = ImGui::GetWindowSize().x;
 
       // Título del proyecto
-      ImGui::SetCursorPosY(20.0f);
+      ImGui::SetCursorPosY(30.0f);
       const char *titulo = "SNIFFER - PROYECTO DE REDES";
-      ImGui::SetWindowFontScale(2.0f);
+      ImGui::SetWindowFontScale(2.5f); // Subido un poco para emparejar la estética de ayuda
       float textWidth = ImGui::CalcTextSize(titulo).x;
       ImGui::SetCursorPosX((windowWidth - textWidth) * 0.5f);
       ImGui::TextUnformatted(titulo);
       ImGui::SetWindowFontScale(1.0f);
 
-      // Empujamos los botones hacia el centro de la pantalla
-      ImGui::SetCursorPosY(viewportSize.y * 0.35f);
+      ImGui::Spacing();
+      ImGui::Spacing();
+      ImGui::Separator();
+      ImGui::Spacing();
+
+      ImGui::BeginChild("ContenidoInicio", ImVec2(0, viewportSize.y - 140.0f), false);
+
+      // Empujamos los botones hacia el centro vertical del contenedor
+      ImGui::SetCursorPosY(ImGui::GetCursorPosY() + (viewportSize.y * 0.1f));
 
       // Configuramos tamaño de los botones
       float btnWidth = 300.0f;
@@ -312,12 +313,10 @@ int main()
 
       // Botón para entrar al Sniffer
       ImGui::SetCursorPosX((windowWidth - btnWidth) * 0.5f);
-      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.5f, 0.9f, 1.0f)); // Azul
       if (ImGui::Button("Entrar al Sniffer", ImVec2(btnWidth, btnHeight)))
       {
         estado_actual = SNIFFER;
       }
-      ImGui::PopStyleColor();
       ImGui::Spacing();
       ImGui::Spacing();
 
@@ -331,7 +330,7 @@ int main()
       }
       ImGui::PopStyleColor();
 
-      ImGui::SetWindowFontScale(1.0f); // Restauramos la escala de la fuente
+      ImGui::SetWindowFontScale(1.2f); // Escala para la sección de créditos
 
       ImGui::Spacing();
       ImGui::Spacing();
@@ -343,6 +342,7 @@ int main()
       float devWidth = ImGui::CalcTextSize(label_devs).x;
       ImGui::SetCursorPosX((windowWidth - devWidth) * 0.5f);
       ImGui::TextUnformatted(label_devs);
+      ImGui::Spacing();
 
       const char *dev1 = "- Tania Jaquelin Lopez Acevedo";
       const char *dev2 = "- Antonio Duron Mendoza";
@@ -367,6 +367,9 @@ int main()
       float dev5Width = ImGui::CalcTextSize(dev5).x;
       ImGui::SetCursorPosX((windowWidth - dev5Width) * 0.5f);
       ImGui::TextUnformatted(dev5);
+
+      ImGui::EndChild();
+      ImGui::SetWindowFontScale(1.0f); // Restauramos la escala
 
       ImGui::End();
     }
@@ -481,10 +484,6 @@ int main()
       // Empujamos los botones a la derecha en la misma línea del texto de Estado
       ImGui::SetCursorPosX(controlWindowWidth - w_volver - w_ayuda - w_stats - w_export - (espaciadoBotones * 3) - margenDerecho);
 
-      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.5f, 0.9f, 1.0f));
-      ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.3f, 0.7f, 1.0f));
-      ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.2f, 0.5f, 1.0f));
-
       bool esta_deshabilitado = captura_activa; 
       if (esta_deshabilitado) {
         ImGui::BeginDisabled();
@@ -518,8 +517,6 @@ int main()
       if (ImGui::Button("Exportar CSV", ImVec2(w_export, 0))) {
           abrir_modal_exportar = true;
       }
-
-      ImGui::PopStyleColor(3);
 
       // Separador visual antes del selector de red
       ImGui::Spacing();
@@ -1064,18 +1061,19 @@ string determinarTipoAdaptador(const string &descripcion)
 // Funcion para asignar un color a cada protocolo
 ImU32 ObtenerColorProtocolo(const std::string &protocolo)
 {
+  // Tonos pastel muy suaves (baja opacidad al 12% para que el texto resalte)
   if (protocolo == "TCP")
-    return ImGui::ColorConvertFloat4ToU32(ImVec4(0.2f, 0.5f, 0.9f, 0.25f)); // Azul
+    return ImGui::ColorConvertFloat4ToU32(ImVec4(0.20f, 0.45f, 0.85f, 0.12f)); // Azul sutil
   if (protocolo == "UDP")
-    return ImGui::ColorConvertFloat4ToU32(ImVec4(0.9f, 0.6f, 0.1f, 0.25f)); // Naranja
+    return ImGui::ColorConvertFloat4ToU32(ImVec4(0.90f, 0.50f, 0.10f, 0.12f)); // Naranja sutil
   if (protocolo == "DNS")
-    return ImGui::ColorConvertFloat4ToU32(ImVec4(0.3f, 0.8f, 0.4f, 0.25f)); // Verde
+    return ImGui::ColorConvertFloat4ToU32(ImVec4(0.25f, 0.65f, 0.35f, 0.12f)); // Verde sutil
   if (protocolo == "HTTP")
-    return ImGui::ColorConvertFloat4ToU32(ImVec4(0.8f, 0.3f, 0.8f, 0.25f)); // Púrpura
+    return ImGui::ColorConvertFloat4ToU32(ImVec4(0.65f, 0.30f, 0.65f, 0.12f)); // Púrpura sutil
   if (protocolo == "HTTPS")
-    return ImGui::ColorConvertFloat4ToU32(ImVec4(0.9f, 0.2f, 0.2f, 0.25f)); // Rojo
+    return ImGui::ColorConvertFloat4ToU32(ImVec4(0.85f, 0.25f, 0.25f, 0.12f)); // Rojo sutil
 
-  return ImGui::ColorConvertFloat4ToU32(ImVec4(0.3f, 0.3f, 0.3f, 0.2f));
+  return ImGui::ColorConvertFloat4ToU32(ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
 }
 
 // Función para identificar si una IP es pública, privada, loopback, etc.
@@ -1285,4 +1283,75 @@ void menuFiltrado()
     }
     ImGui::EndCombo();
   }
+}
+
+void StyleColorsUmisumi(){
+  ImGuiStyle& style = ImGui::GetStyle();
+  ImVec4* colors = style.Colors;
+  
+  // --- COLOR DE LETRA EN NEGRO POR DEFECTO ---
+  colors[ImGuiCol_Text]                   = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
+  colors[ImGuiCol_TextDisabled]           = ImVec4(0.40f, 0.40f, 0.40f, 1.00f);
+  
+  // Configuración del fondo y paneles
+  colors[ImGuiCol_WindowBg]               = ImVec4(0.92f, 1.00f, 0.94f, 1.00f);
+  colors[ImGuiCol_ChildBg]                = ImVec4(0.85f, 0.95f, 0.88f, 0.00f); // Transparente o sutil
+  colors[ImGuiCol_PopupBg]                = ImVec4(0.92f, 1.00f, 0.94f, 0.98f);
+  colors[ImGuiCol_Border]                 = ImVec4(0.00f, 0.54f, 0.21f, 0.35f);
+  
+  // Elementos de interacción (Inputs, Combos, Checkbox)
+  colors[ImGuiCol_FrameBg]                = ImVec4(0.71f, 0.97f, 0.84f, 1.00f);
+  colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.26f, 0.98f, 0.60f, 0.40f);
+  colors[ImGuiCol_FrameBgActive]          = ImVec4(0.26f, 0.98f, 0.65f, 0.67f);
+  
+  // Títulos de ventanas
+  colors[ImGuiCol_TitleBg]                = ImVec4(0.42f, 0.95f, 0.59f, 1.00f);
+  colors[ImGuiCol_TitleBgActive]          = ImVec4(0.15f, 0.84f, 0.37f, 1.00f);
+  colors[ImGuiCol_TitleBgCollapsed]      = ImVec4(0.42f, 0.95f, 0.59f, 0.75f);
+  colors[ImGuiCol_MenuBarBg]              = ImVec4(0.00f, 0.54f, 0.21f, 1.00f);
+  
+  // Barras de desplazamiento
+  colors[ImGuiCol_ScrollbarBg]            = ImVec4(0.85f, 0.95f, 0.88f, 1.00f);
+  colors[ImGuiCol_ScrollbarGrab]          = ImVec4(0.00f, 0.58f, 0.19f, 0.80f);
+  colors[ImGuiCol_ScrollbarGrabHovered]   = ImVec4(0.25f, 0.81f, 0.50f, 0.80f);
+  colors[ImGuiCol_ScrollbarGrabActive]    = ImVec4(0.32f, 0.87f, 0.51f, 1.00f);
+  
+  // Checkmarks y Sliders
+  colors[ImGuiCol_CheckMark]              = ImVec4(0.08f, 0.67f, 0.40f, 1.00f);
+  colors[ImGuiCol_SliderGrab]             = ImVec4(0.26f, 0.98f, 0.56f, 0.78f);
+  colors[ImGuiCol_SliderGrabActive]       = ImVec4(0.46f, 0.80f, 0.59f, 0.60f);
+  
+  // Botones (Estilo verde Umisumi, sin el azul que molestaba)
+  colors[ImGuiCol_Button]                 = ImVec4(0.26f, 0.98f, 0.67f, 0.57f);
+  colors[ImGuiCol_ButtonHovered]          = ImVec4(0.26f, 0.98f, 0.54f, 1.00f);
+  colors[ImGuiCol_ButtonActive]           = ImVec4(0.06f, 0.98f, 0.42f, 1.00f);
+  
+  // Cabeceras de tablas y menús desplegables
+  colors[ImGuiCol_Header]                 = ImVec4(0.26f, 0.98f, 0.56f, 0.31f);
+  colors[ImGuiCol_HeaderHovered]          = ImVec4(0.26f, 0.98f, 0.54f, 0.80f);
+  colors[ImGuiCol_HeaderActive]           = ImVec4(0.26f, 0.98f, 0.54f, 1.00f);
+  
+  colors[ImGuiCol_Separator]              = ImVec4(0.00f, 0.54f, 0.21f, 0.35f);
+  colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.14f, 0.80f, 0.36f, 0.78f);
+  colors[ImGuiCol_SeparatorActive]        = ImVec4(0.14f, 0.80f, 0.38f, 1.00f);
+  colors[ImGuiCol_ResizeGrip]             = ImVec4(0.26f, 0.98f, 0.56f, 0.20f);
+  colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.26f, 0.98f, 0.52f, 0.67f);
+  colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.26f, 0.98f, 0.52f, 0.95f);
+  
+  // Pestañas (Tabs)
+  colors[ImGuiCol_Tab]                    = ImVec4(0.76f, 0.84f, 0.79f, 0.93f);
+  colors[ImGuiCol_TabHovered]             = ImVec4(0.26f, 0.98f, 0.54f, 0.80f);
+  colors[ImGuiCol_TabSelected]            = ImVec4(0.60f, 0.88f, 0.70f, 1.00f);
+  colors[ImGuiCol_TabSelectedOverline]    = ImVec4(0.26f, 0.98f, 0.56f, 1.00f);
+  colors[ImGuiCol_TabDimmed]              = ImVec4(0.92f, 0.94f, 0.93f, 0.99f);
+  colors[ImGuiCol_TabDimmedSelected]      = ImVec4(0.74f, 0.91f, 0.82f, 1.00f);
+  
+  colors[ImGuiCol_TableHeaderBg]          = ImVec4(0.78f, 0.98f, 0.85f, 1.00f);
+  colors[ImGuiCol_TableBorderStrong]      = ImVec4(0.00f, 0.54f, 0.21f, 0.35f);
+  colors[ImGuiCol_TableBorderLight]       = ImVec4(0.00f, 0.54f, 0.21f, 0.15f);
+  
+  colors[ImGuiCol_TextLink]               = ImVec4(0.00f, 0.54f, 0.21f, 1.00f);
+  colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.26f, 0.98f, 0.54f, 0.35f);
+  colors[ImGuiCol_DragDropTarget]         = ImVec4(0.26f, 0.98f, 0.54f, 0.95f);
+  colors[ImGuiCol_NavCursor]              = ImVec4(0.26f, 0.98f, 0.50f, 0.80f);
 }
