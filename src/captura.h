@@ -282,20 +282,26 @@ void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_cha
 
   int ttl_value = ih->ttl; // Extraemos el TTL de la cabecera IPv4
 
-  // Guardar el vector después de agregar el paquete capturado
-  {
-    lock_guard<mutex> lock(paquetes_mutex);
+    // Guardar el vector después de agregar el paquete capturado
+    {
+      lock_guard<mutex> lock(paquetes_mutex);
 
-    if (ih->proto == 17) { // UDP
-      protocolo = asignar_protocolo(sport, dport, ih->proto);
-      PaqueteInfo nuevo_pkt(id, timestr, (int)header->len, src_ip, dst_ip, protocolo, src_puerto, dst_puerto, ttl_value, mac_src_str, mac_dst_str, pkt_data, (int)header->len, dominio, es_dns);      lista_paquetes.push_back(nuevo_pkt);
-    } else if (ih->proto == 6) {  // TCP
-      protocolo = asignar_protocolo(sport, dport, ih->proto);
-      PaqueteInfo nuevo_pkt(id, timestr, (int)header->len, src_ip, dst_ip, protocolo, src_puerto, dst_puerto, ttl_value, mac_src_str, mac_dst_str, pkt_data, (int)header->len, dominio, es_dns);      lista_paquetes.push_back(nuevo_pkt);
-    } else {
-      return; 
+      if (ih->proto == 17) { // UDP
+        protocolo = asignar_protocolo(sport, dport, ih->proto);
+        PaqueteInfo nuevo_pkt(id, timestr, (int)header->len, src_ip, dst_ip, protocolo, src_puerto, dst_puerto, ttl_value, mac_src_str, mac_dst_str, pkt_data, (int)header->len, dominio, es_dns);      
+        lista_paquetes.push_back(nuevo_pkt);
+      } else if (ih->proto == 6) {  // TCP
+        protocolo = asignar_protocolo(sport, dport, ih->proto);
+        PaqueteInfo nuevo_pkt(id, timestr, (int)header->len, src_ip, dst_ip, protocolo, src_puerto, dst_puerto, ttl_value, mac_src_str, mac_dst_str, pkt_data, (int)header->len, dominio, es_dns);      
+        lista_paquetes.push_back(nuevo_pkt);
+      } else if (ih->proto == 1) {// ICMP (Ping)
+        PaqueteInfo nuevo_pkt(id, timestr, (int)header->len, src_ip, dst_ip, "ICMP", "N/A", "N/A", ttl_value, mac_src_str, mac_dst_str, pkt_data, (int)header->len, "", false);
+        lista_paquetes.push_back(nuevo_pkt);
+      } else { // Cualquier otro tráfico IP
+        PaqueteInfo nuevo_pkt(id, timestr, (int)header->len, src_ip, dst_ip, "Otro (IP)", "N/A", "N/A", ttl_value, mac_src_str, mac_dst_str, pkt_data, (int)header->len, "", false);
+        lista_paquetes.push_back(nuevo_pkt);
+      }
     }
-  }
 }
 
 void iniciarCaptura(int id_interfaz)
@@ -304,7 +310,7 @@ void iniciarCaptura(int id_interfaz)
   pcap_if_t *d;                       // Puntero de exploración intermedio
   char errbuf[PCAP_ERRBUF_SIZE];      // Almacenamiento de errores de inicialización
   u_int netmask;                      // Máscara de red de la interfaz elegida (requerido para compilar filtros de pcap)
-  char packet_filter[] = "ip and (udp or tcp)";// Filtro de bajo nivel BPF: El sniffer descartará todo tráfico que NO sea IPv4 y UDP y TCP
+  char packet_filter[] = "ip";// Filtro de bajo nivel BPF: El sniffer descartará todo tráfico que NO sea IPv4 y UDP y TCP
   struct bpf_program fcode;           // Estructura binaria compilada que almacena la regla del filtro
 
   // Termina si no encontro las dependencias de npcap
