@@ -83,6 +83,28 @@ int main()
   (void)io;
   ImGui::StyleColorsClassic();
 
+  ImGuiStyle& style = ImGui::GetStyle();
+  
+  // Redondear los bordes 
+  style.WindowRounding = 8.0f;
+  style.FrameRounding = 6.0f;
+  style.PopupRounding = 6.0f;
+  style.ChildRounding = 6.0f;
+  
+  // Aumentar un poco los márgenes
+  style.WindowPadding = ImVec2(15, 15);
+  style.FramePadding = ImVec2(8, 4);
+  style.ItemSpacing = ImVec2(10, 8);
+
+  // Paleta de colores 
+  ImVec4* colors = style.Colors;
+  colors[ImGuiCol_WindowBg]       = ImVec4(0.12f, 0.12f, 0.14f, 1.00f);
+  colors[ImGuiCol_FrameBg]        = ImVec4(0.20f, 0.20f, 0.24f, 1.00f);
+  colors[ImGuiCol_FrameBgHovered] = ImVec4(0.28f, 0.28f, 0.32f, 1.00f);
+  colors[ImGuiCol_Header]         = ImVec4(0.25f, 0.45f, 0.85f, 0.80f);
+  colors[ImGuiCol_Button]         = ImVec4(0.25f, 0.45f, 0.85f, 1.00f);
+  colors[ImGuiCol_ButtonHovered]  = ImVec4(0.35f, 0.55f, 0.95f, 1.00f);
+
   // Inicializamos los backends
   ImGui_ImplGlfw_InitForOpenGL(ventana, true);
   ImGui_ImplOpenGL3_Init(glsl_version);
@@ -366,14 +388,21 @@ int main()
     else if (estado_actual == SNIFFER)
     {
       // --- PANTALLA PRINCIPAL DEL SNIFFER ---
+      float menu_offset = 25.0f; 
+      float padding = 10.0f;    
 
-      float padding = 30.0f;
-      float altoControl = viewportSize.y * 0.2f;
-      float altoTabla = viewportSize.y * 0.45f;
-      float altoAnalisis = viewportSize.y * 0.3f;
+      // El panel de control tiene altura fija para evitar espacios inútiles
+      float altoControl = 180.0f; 
+      
+      // Calculamos cuánto espacio útil queda en la pantalla sin pasarnos del límite
+      float espacio_restante = viewportSize.y - menu_offset - (padding * 4) - altoControl;
+      
+      // Repartimos lo que sobra: 60% a la lista de paquetes y 40% al análisis
+      float altoTabla = espacio_restante * 0.6f;
+      float altoAnalisis = espacio_restante * 0.4f;
 
-      // ImGuiCond_Always fuerza matematicamente la posicion para evitar conflictos con archivos .ini
-      ImGui::SetNextWindowPos(ImVec2(padding, padding), ImGuiCond_Always);
+      // Configuramos la posición y tamaño de la ventana de control, teniendo en cuenta el nuevo offset por el menú y el padding
+      ImGui::SetNextWindowPos(ImVec2(padding, menu_offset + padding), ImGuiCond_Always);
       ImGui::SetNextWindowSize(ImVec2(viewportSize.x - (padding * 2), altoControl), ImGuiCond_Always);
       ImGui::Begin("Control de Sniffer", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
@@ -557,7 +586,7 @@ int main()
       ImGui::End();
 
       // iniciamos la segunda seccion grafica donde se muestra todo el trafico capturado
-      ImGui::SetNextWindowPos(ImVec2(padding, padding + altoControl + padding), ImGuiCond_Always);
+      ImGui::SetNextWindowPos(ImVec2(padding, menu_offset + (padding * 2) + altoControl), ImGuiCond_Always);
       ImGui::SetNextWindowSize(ImVec2(viewportSize.x - (padding * 2), altoTabla), ImGuiCond_Always);
       ImGui::Begin("Paquetes Capturados", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
@@ -679,7 +708,7 @@ int main()
       ImGui::End();
 
       // iniciamos la tercera seccion grafica donde se analiza cada uno de los paquetes del trafico
-      ImGui::SetNextWindowPos(ImVec2(padding, padding + altoControl + padding + altoTabla + padding), ImGuiCond_Always);
+      ImGui::SetNextWindowPos(ImVec2(padding, menu_offset + (padding * 3) + altoControl + altoTabla), ImGuiCond_Always);
       ImGui::SetNextWindowSize(ImVec2(viewportSize.x - (padding * 2), altoAnalisis), ImGuiCond_Always);
       ImGui::Begin("Analisis del paquete", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 
