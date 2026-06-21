@@ -6,6 +6,8 @@
 #include <winsock2.h>
 #include <windows.h>
 #include <GLFW/glfw3.h>
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
 
 #include <thread>
 #include <vector>
@@ -15,6 +17,7 @@
 
 #include <set>
 #include <map>
+
 
 using namespace std;
 
@@ -63,17 +66,46 @@ void menuFiltrado();
 //---------------------------------INICIO DE LA FUNCIÓN PRINCIPAL--------------------------------------------------------------------
 int main()
 {
-  // Inicializamos los graficos
+
   if (!glfwInit())
     return 1;
   const char *glsl_version = "#version 130";
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 
-  // Creamos la ventana grafica
+
   GLFWwindow *ventana = glfwCreateWindow(1280, 720, "Sniffer - Proyecto de Redes", NULL, NULL);
   if (ventana == NULL)
     return 1;
+
+  HWND hwnd = glfwGetWin32Window(ventana);
+  
+  // Preguntamos a Windows la ruta completa de nuestro propio .exe
+  char ruta_exe[MAX_PATH];
+  GetModuleFileNameA(NULL, ruta_exe, MAX_PATH);
+  
+  // Cortamos el nombre del .exe para quedarnos solo con la carpeta base
+  string ruta_carpeta = string(ruta_exe);
+  size_t ultimo_slash = ruta_carpeta.find_last_of("\\/");
+  if (ultimo_slash != string::npos) {
+      ruta_carpeta = ruta_carpeta.substr(0, ultimo_slash + 1);
+  }
+  
+  //Le pegamos el nombre de nuestro archivo de imagen
+  string ruta_icono = ruta_carpeta + "icono.ico";
+
+  // Cargamos la imagen con esa ruta 
+  HICON hIcon = (HICON)LoadImageA(NULL, ruta_icono.c_str(), IMAGE_ICON, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE | LR_SHARED);
+  
+  if (hIcon != NULL) {
+      SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
+      SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
+  } else {
+      printf("No se pudo cargar el archivo icono.ico en la ruta: %s\n", ruta_icono.c_str());
+  }
+
+
+  glfwMakeContextCurrent(ventana);
   glfwMakeContextCurrent(ventana);
   glfwSwapInterval(1);
 
@@ -673,8 +705,8 @@ int main()
             ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, color_fila);
 
             ImGui::TableSetColumnIndex(0);
-            char label_id[32];
-            sprintf(label_id, "%d", pkt.id);
+            char label_id[64];
+            sprintf(label_id, "%d##%p", pkt.id, &pkt);
 
             bool esta_seleccionado = (idPaqueteSeleccionado == pkt.id);
 
@@ -748,8 +780,8 @@ int main()
               ImU32 color_fila = ObtenerColorProtocolo(pkt.protocolo);
               ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, color_fila);
               ImGui::TableSetColumnIndex(0);
-              char label_id[32];
-              sprintf(label_id, "%d", pkt.id);
+              char label_id[64];
+              sprintf(label_id, "%d##%p", pkt.id, &pkt);
               bool esta_seleccionado = (idPaqueteSeleccionado == pkt.id);
 
               if (ImGui::Selectable(label_id, esta_seleccionado, ImGuiSelectableFlags_SpanAllColumns))
