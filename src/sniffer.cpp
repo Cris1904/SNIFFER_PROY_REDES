@@ -635,6 +635,17 @@ int main()
             ImGui::Text("%s", pkt.IP_destino.c_str());
             ImGui::TableSetColumnIndex(5);
             ImGui::Text("%s", pkt.protocolo.c_str());
+            if (ImGui::IsItemHovered()) {
+              ImGui::BeginTooltip();
+              if (pkt.protocolo == "DNS") ImGui::Text("DNS: Traduce nombres de páginas web a direcciones numéricas.");
+              else if (pkt.protocolo == "HTTP") ImGui::Text("HTTP: Tráfico web normal (¡Cuidado, no está encriptado!).");
+              else if (pkt.protocolo == "HTTPS") ImGui::Text("HTTPS: Tráfico web seguro y encriptado.");
+              else if (pkt.protocolo == "ICMP") ImGui::Text("ICMP: Usado para pruebas de conexión como el 'Ping'.");
+              else if (pkt.protocolo == "TCP") ImGui::Text("TCP: Protocolo confiable (asegura que los datos lleguen completos).");
+              else if (pkt.protocolo == "UDP") ImGui::Text("UDP: Protocolo rápido pero no confiable (usado en juegos y videos).");
+              else ImGui::Text("Protocolo de red.");
+              ImGui::EndTooltip();
+            }
             ImGui::TableSetColumnIndex(6);
             ImGui::Text("%s", pkt.Puerto_origen.c_str());
             ImGui::TableSetColumnIndex(7);
