@@ -67,45 +67,70 @@ void menuFiltrado();
 int main()
 {
 
-  if (!glfwInit())
+  if (!glfwInit()) {
+    printf("Error: No se pudo inicializar GLFW.\n");
     return 1;
-  const char *glsl_version = "#version 130";
+  }
+
+  const char* glsl_version = "#version 130"; 
+  GLFWwindow* ventana = nullptr;
+
+  // --- INTENTO 1: Configuración Moderna (OpenGL 3.3) ---
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); 
 
+  ventana = glfwCreateWindow(1280, 720, "Sniffer - Proyecto de Redes", NULL, NULL);
 
-  GLFWwindow *ventana = glfwCreateWindow(1280, 720, "Sniffer - Proyecto de Redes", NULL, NULL);
-  if (ventana == NULL)
+  // --- INTENTO 2: Modo de compatibilidad para Máquina Virtual (OpenGL 3.0) ---
+  if (ventana == NULL) {
+    printf("Aviso: La VM no soporta OpenGL 3.3. Intentando Modo Compatibilidad (3.0)...\n");
+    glfwDefaultWindowHints(); 
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    glsl_version = "#version 130"; 
+    ventana = glfwCreateWindow(1280, 720, "Sniffer - Proyecto de Redes (Modo Compatibilidad)", NULL, NULL);
+  }
+
+  // --- INTENTO 3: Modo seguro (Dejar que el driver básico de la maquina decida) ---
+  if (ventana == NULL) {
+    printf("Aviso: Falló OpenGL 3.0. Intentando el perfil más básico de Windows...\n");
+    glfwDefaultWindowHints();
+    ventana = glfwCreateWindow(1280, 720, "Sniffer - Proyecto de Redes (Modo Seguro)", NULL, NULL);
+  }
+
+  // Si ninguno de los 3 intentos funcionó
+  if (ventana == NULL) {
+    printf("Error Crítico: No se pudo crear la ventana en ningún modo gráfico.\n");
+    glfwTerminate();
+    system("pause");
     return 1;
+  }
 
   HWND hwnd = glfwGetWin32Window(ventana);
   
-  // Preguntamos a Windows la ruta completa de nuestro propio .exe
   char ruta_exe[MAX_PATH];
   GetModuleFileNameA(NULL, ruta_exe, MAX_PATH);
   
-  // Cortamos el nombre del .exe para quedarnos solo con la carpeta base
   string ruta_carpeta = string(ruta_exe);
   size_t ultimo_slash = ruta_carpeta.find_last_of("\\/");
   if (ultimo_slash != string::npos) {
-      ruta_carpeta = ruta_carpeta.substr(0, ultimo_slash + 1);
+    ruta_carpeta = ruta_carpeta.substr(0, ultimo_slash + 1);
   }
   
-  //Le pegamos el nombre de nuestro archivo de imagen
   string ruta_icono = ruta_carpeta + "icono.ico";
 
-  // Cargamos la imagen con esa ruta 
   HICON hIcon = (HICON)LoadImageA(NULL, ruta_icono.c_str(), IMAGE_ICON, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE | LR_SHARED);
   
   if (hIcon != NULL) {
-      SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
-      SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
+    SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
+    SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
   } else {
-      printf("No se pudo cargar el archivo icono.ico en la ruta: %s\n", ruta_icono.c_str());
+    printf("No se pudo cargar el archivo icono.ico en la ruta: %s\n", ruta_icono.c_str());
   }
 
-
-  glfwMakeContextCurrent(ventana);
+  // Inicializar el contexto final de la ventana
   glfwMakeContextCurrent(ventana);
   glfwSwapInterval(1);
 
