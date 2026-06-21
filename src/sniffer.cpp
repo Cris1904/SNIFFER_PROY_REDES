@@ -324,10 +324,11 @@ int main()
       float controlWindowWidth = ImGui::GetWindowSize().x;
       float btnVolverWidth = 100.0f;
       float btnAyudaWidth = 100.0f;
+      float btnExportarWidth = 120.0f; 
       float espaciadoBotones = ImGui::GetStyle().ItemSpacing.x;
       float margenDerecho = 15.0f;
 
-      ImGui::SetCursorPosX(controlWindowWidth - btnVolverWidth - btnAyudaWidth - espaciadoBotones - margenDerecho);
+      ImGui::SetCursorPosX(controlWindowWidth - btnVolverWidth - btnAyudaWidth - btnExportarWidth - (espaciadoBotones * 2) - margenDerecho);
 
       ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.5f, 0.9f, 1.0f));
       ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.3f, 0.7f, 1.0f));
@@ -360,6 +361,12 @@ int main()
       {
         estado_anterior = SNIFFER;
         estado_actual = VENTANA_AYUDA;
+      }
+
+      ImGui::SameLine();
+      static bool abrir_modal_exportar = false;
+      if (ImGui::Button("Exportar CSV", ImVec2(btnExportarWidth, 0))) {
+          abrir_modal_exportar = true;
       }
 
       ImGui::PopStyleColor(3);
@@ -421,6 +428,21 @@ int main()
         ImGui::Spacing();
 
         menuFiltrado();
+      }
+      if (abrir_modal_exportar) {
+          ImGui::OpenPopup("Exportar a CSV");
+          abrir_modal_exportar = false;
+      }
+
+      if (ImGui::BeginPopupModal("Exportar a CSV", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+          ImGui::Text("Selecciona las columnas a exportar:");
+          ImGui::Separator();
+          ImGui::Spacing();
+
+          if (ImGui::Button("Cancelar", ImVec2(120, 0))) {
+              ImGui::CloseCurrentPopup();
+          }
+          ImGui::EndPopup();
       }
       ImGui::End();
 
