@@ -880,7 +880,15 @@ void menuFiltrado()
       if (ImGui::Button("Cualquiera de los filtros")) filtro_condicion_y = true;
   }
   ImGui::PopStyleColor();
-
+  if (ImGui::IsItemHovered()) {
+      ImGui::BeginTooltip();
+      if (filtro_condicion_y) {
+          ImGui::TextUnformatted("Filtro estricto:\nSolo se muestran los paquetes que tengan\nel protocolo, las IPs y los puertos que escribiste.");
+      } else {
+          ImGui::TextUnformatted("Filtro flexible:\nSe muestran todos los paquetes que compartan\nal menos uno de los datos que escribiste.");
+      }
+      ImGui::EndTooltip();
+  }
   ImGui::Text("IP Origen:");
   ImGui::SameLine();
   ImGui::SetNextItemWidth(150);
