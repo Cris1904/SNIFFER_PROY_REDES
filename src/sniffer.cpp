@@ -616,10 +616,25 @@ int main()
         {
           for (auto &pkt : lista_paquetes)
           {
-            if ((ip_o[0] == '\0' || strcmp(ip_o, pkt.IP_origen.c_str()) == 0) &&
-                (ip_d[0] == '\0' || strcmp(ip_d, pkt.IP_destino.c_str()) == 0) &&
-                (proto[0] == '\0' || strcmp(proto, pkt.protocolo.c_str()) == 0) &&
-                (puerto_d[0] == '\0' || strcmp(puerto_d, pkt.Puerto_destino.c_str()) == 0))
+            bool mostrar = false;
+            
+            if (filtro_condicion_y) {
+                //Todas las casillas que no estén vacías deben coincidir
+                mostrar = ((ip_o[0] == '\0' || strcmp(ip_o, pkt.IP_origen.c_str()) == 0) &&
+                           (ip_d[0] == '\0' || strcmp(ip_d, pkt.IP_destino.c_str()) == 0) &&
+                           (proto[0] == '\0' || strcmp(proto, pkt.protocolo.c_str()) == 0) &&
+                           (puerto_d[0] == '\0' || strcmp(puerto_d, pkt.Puerto_destino.c_str()) == 0));
+            } else {
+                //Con que una sola casilla coincida, mostramos el paquete
+                bool coincide_ip_o = (ip_o[0] != '\0' && strcmp(ip_o, pkt.IP_origen.c_str()) == 0);
+                bool coincide_ip_d = (ip_d[0] != '\0' && strcmp(ip_d, pkt.IP_destino.c_str()) == 0);
+                bool coincide_proto = (proto[0] != '\0' && strcmp(proto, pkt.protocolo.c_str()) == 0);
+                bool coincide_puerto = (puerto_d[0] != '\0' && strcmp(puerto_d, pkt.Puerto_destino.c_str()) == 0);
+                
+                mostrar = (coincide_ip_o || coincide_ip_d || coincide_proto || coincide_puerto);
+            }
+
+            if (mostrar) 
             {
               ImGui::TableNextRow();
 
