@@ -637,7 +637,8 @@ int main()
             if (mostrar) 
             {
               ImGui::TableNextRow();
-
+              ImU32 color_fila = ObtenerColorProtocolo(pkt.protocolo);
+              ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, color_fila);
               ImGui::TableSetColumnIndex(0);
               char label_id[32];
               sprintf(label_id, "%d", pkt.id);
