@@ -421,36 +421,39 @@ int main()
     else if (estado_actual == SNIFFER)
     {
       // --- PANTALLA PRINCIPAL DEL SNIFFER ---
-      float menu_offset = 25.0f; 
-      float padding = 10.0f;    
 
-      // El panel de control tiene altura fija para evitar espacios inútiles
-      float altoControl = 180.0f; 
+      float menu_offset = 20.0f; 
       
-      // Calculamos cuánto espacio útil queda en la pantalla sin pasarnos del límite
-      float espacio_restante = viewportSize.y - menu_offset - (padding * 4) - altoControl;
+      float altoControl = 220.0f; 
       
-      // Repartimos lo que sobra: 60% a la lista de paquetes y 40% al análisis
-      float altoTabla = espacio_restante * 0.6f;
-      float altoAnalisis = espacio_restante * 0.4f;
+      float espacio_restante = viewportSize.y - menu_offset - altoControl;
 
-      // Configuramos la posición y tamaño de la ventana de control, teniendo en cuenta el nuevo offset por el menú y el padding
-      ImGui::SetNextWindowPos(ImVec2(padding, menu_offset + padding), ImGuiCond_Always);
-      ImGui::SetNextWindowSize(ImVec2(viewportSize.x - (padding * 2), altoControl), ImGuiCond_Always);
-      ImGui::Begin("Control de Sniffer", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+      float altoTabla = espacio_restante * 0.55f;
+      float altoAnalisis = espacio_restante * 0.45f;
+
+      //VENTANA DE CONTROL
+      ImGui::SetNextWindowPos(ImVec2(0, menu_offset), ImGuiCond_Always);
+      ImGui::SetNextWindowSize(ImVec2(viewportSize.x, altoControl), ImGuiCond_Always);
+      ImGui::Begin("Control de Sniffer", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+
+      if (!captura_activa) {
+          ImGui::Text("Estado: Detenido");
+      } else {
+          ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "Estado: Capturando..."); // Verde para resaltar
+      }
 
       ImGui::SameLine(); 
 
       float controlWindowWidth = ImGui::GetWindowSize().x;
       float espaciadoBotones = ImGui::GetStyle().ItemSpacing.x;
-      float margenDerecho = 25.0f;
+      float margenDerecho = 15.0f;
       
-
       float w_volver = 90.0f;
       float w_ayuda = 90.0f;
       float w_stats = 110.0f;
       float w_export = 110.0f;
 
+      // Empujamos los botones a la derecha en la misma línea del texto de Estado
       ImGui::SetCursorPosX(controlWindowWidth - w_volver - w_ayuda - w_stats - w_export - (espaciadoBotones * 3) - margenDerecho);
 
       ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.5f, 0.9f, 1.0f));
@@ -479,11 +482,10 @@ int main()
         estado_actual = VENTANA_AYUDA;
       }
 
-
       ImGui::SameLine();
       static bool mostrar_estadisticas = false; 
       if (ImGui::Button("Estadisticas", ImVec2(w_stats, 0))) {
-          mostrar_estadisticas = !mostrar_estadisticas; 
+          mostrar_estadisticas = !mostrar_estadisticas;
       }
 
       ImGui::SameLine();
@@ -493,16 +495,13 @@ int main()
       }
 
       ImGui::PopStyleColor(3);
+
+      // Separador visual antes del selector de red
       ImGui::Spacing();
-      ImGui::Separator();
       ImGui::Spacing();
 
       if (!captura_activa)
       {
-        ImGui::Text("Estado: Detenido");
-        ImGui::Spacing();
-
-        // Llenamos la lista desplegable con los nombres amigables que procesamos previamente en la estructura
         if (ImGui::BeginCombo("Interfaz de Red", listaInterfaces[interfazSeleccionada].nombre_amigable.c_str()))
         {
           for (int n = 0; n < listaInterfaces.size(); n++)
@@ -533,7 +532,6 @@ int main()
       }
       else
       {
-        ImGui::Text("Estado: Capturando");
         ImGui::Text("Interfaz actual: %s", listaInterfaces[interfazSeleccionada].nombre_amigable.c_str());
         ImGui::Spacing();
 
@@ -676,9 +674,9 @@ int main()
 
 
       // iniciamos la segunda seccion grafica donde se muestra todo el trafico capturado
-      ImGui::SetNextWindowPos(ImVec2(padding, menu_offset + (padding * 2) + altoControl), ImGuiCond_Always);
-      ImGui::SetNextWindowSize(ImVec2(viewportSize.x - (padding * 2), altoTabla), ImGuiCond_Always);
-      ImGui::Begin("Paquetes Capturados", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+      ImGui::SetNextWindowPos(ImVec2(0, menu_offset + altoControl), ImGuiCond_Always);
+      ImGui::SetNextWindowSize(ImVec2(viewportSize.x, altoTabla), ImGuiCond_Always);
+      ImGui::Begin("Paquetes Capturados", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
       if (ImGui::BeginTable("TablaPaquetes", 8, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY))
       {
@@ -819,9 +817,9 @@ int main()
       ImGui::End();
 
       // iniciamos la tercera seccion grafica donde se analiza cada uno de los paquetes del trafico
-      ImGui::SetNextWindowPos(ImVec2(padding, menu_offset + (padding * 3) + altoControl + altoTabla), ImGuiCond_Always);
-      ImGui::SetNextWindowSize(ImVec2(viewportSize.x - (padding * 2), altoAnalisis), ImGuiCond_Always);
-      ImGui::Begin("Analisis del paquete", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+      ImGui::SetNextWindowPos(ImVec2(0, menu_offset + altoControl + altoTabla), ImGuiCond_Always);
+      ImGui::SetNextWindowSize(ImVec2(viewportSize.x, altoAnalisis), ImGuiCond_Always);
+      ImGui::Begin("Analisis del paquete", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
       if (ImGui::BeginTable("TablaDetalles", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY))
       {
