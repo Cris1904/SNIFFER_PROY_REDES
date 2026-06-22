@@ -30,6 +30,21 @@ struct InterfazRedInfo
   string nombre_amigable; // Aquí guardaremos el nombre amigable para el usuario (Wi-Fi)
 };
 
+// Estructuras para el visualizador de capas
+struct CapaTraducida {
+  const char* nombre;
+  const char* analogia;
+  string detalles_tecnicos;
+  ImVec4 color;
+};
+
+struct DetallePaqueteCapas {
+  CapaTraducida enlace;     // Capa 2: Ethernet
+  CapaTraducida red;        // Capa 3: IP
+  CapaTraducida transporte; // Capa 4: TCP / UDP
+  CapaTraducida datos;      // Capa 7: Payload / Aplicación
+};
+
 // ---- Estados del programa (ventanas) ----
 enum EstadoPantalla
 {
@@ -63,6 +78,8 @@ ImU32 ObtenerColorProtocolo(const std::string &protocolo);
 string obtenerTipoIP(const string& ip);
 void menuFiltrado();
 void StyleColorsUmisumi();
+DetallePaqueteCapas TraducirPaqueteACapas(const PaqueteInfo& pkt);
+void DibujarModoCapas(const DetallePaqueteCapas& paquete);
 
 //---------------------------------INICIO DE LA FUNCIÓN PRINCIPAL--------------------------------------------------------------------
 int main()
@@ -109,6 +126,7 @@ int main()
     return 1;
   }
 
+  // Identificador del sistema nativo de Windows
   HWND hwnd = glfwGetWin32Window(ventana);
   
   char ruta_exe[MAX_PATH];
@@ -846,71 +864,85 @@ int main()
       if (ImGui::BeginTable("TablaDetalles", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY))
       {
         ImGui::TableSetupScrollFreeze(0, 1);
-        ImGui::TableSetupColumn("Detalles del paquete", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Bytes del paquete");
+        ImGui::TableSetupColumn("Analisis - Detalle del paquete", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("Hexadecimal - Bytes del paquete", ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableHeadersRow();
 
         if (idPaqueteSeleccionado != -1)
         {
-          PaqueteInfo paquete_actual = {0, "", 0, "", "", "", "", "", 0, "", "", nullptr, 0};
-          bool paquete_encontrado = false;
+          PaqueteInfo* pkt_actual = nullptr;
 
           paquetes_mutex.lock();
           for (auto &pkt : lista_paquetes)
           {
             if (pkt.id == idPaqueteSeleccionado)
             {
-              paquete_actual = pkt;
-              paquete_encontrado = true;
+              pkt_actual = &pkt;
               break;
             }
           }
           paquetes_mutex.unlock();
 
-          if (paquete_encontrado)
+          if (pkt_actual != nullptr)
           {
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
 
-            string titulo_trama = "Trama " + to_string(paquete_actual.id);
-            if (ImGui::TreeNode(titulo_trama.c_str()))
+            // --- BARRA DE PESTAÑAS PARA EL DESGLOSE ---
+            if (ImGui::BeginTabBar("TabsAnalisisDetallado"))
             {
-              ImGui::Text("Hora de llegada: %s", paquete_actual.tiempo_vida.c_str());
-              ImGui::Text("Longitud: %d bytes", paquete_actual.longitud);
-              ImGui::TreePop();
-            }
-
-            if (ImGui::TreeNode("Ethernet II"))
-            {
-              ImGui::Text("MAC Destino: %s", paquete_actual.mac_destino.c_str());
-              ImGui::Text("MAC Origen:  %s", paquete_actual.mac_origen.c_str());
-              ImGui::TreePop();
-            }
-
-            string titulo_ip = "IPv4";
-            if (ImGui::TreeNode(titulo_ip.c_str()))
-            {
-              ImGui::Text("IP Origen:  %s", paquete_actual.IP_origen.c_str());
-              ImGui::Text("IP Destino: %s", paquete_actual.IP_destino.c_str());
-              ImGui::Text("Tiempo de vida (TTL): %d", paquete_actual.ttl);
-              ImGui::TreePop();
-            }
-
-            string titulo_puertos = "Protocolo de transporte (" + paquete_actual.protocolo + ")";
-            if (ImGui::TreeNode(titulo_puertos.c_str()))
-            {
-              ImGui::Text("Puerto Origen:  %s", paquete_actual.Puerto_origen.c_str());
-              ImGui::Text("Puerto Destino: %s", paquete_actual.Puerto_destino.c_str());
-              ImGui::TreePop();
-            }
-
-            if (paquete_actual.mostrar_dns)
-            {
-              if (ImGui::TreeNode("Análisis DNS"))
+              if (ImGui::BeginTabItem("Árbol Técnico"))
               {
-                ImGui::Text("Dominio consultado: %s", paquete_actual.nombre_dns.c_str());
-                ImGui::TreePop();
+                string titulo_trama = "Trama " + to_string(pkt_actual->id);
+                if (ImGui::TreeNode(titulo_trama.c_str()))
+                {
+                  ImGui::Text("Hora de llegada: %s", pkt_actual->tiempo_vida.c_str());
+                  ImGui::Text("Longitud: %d bytes", pkt_actual->longitud);
+                  ImGui::TreePop();
+                }
+
+                if (ImGui::TreeNode("Ethernet II"))
+                {
+                  ImGui::Text("MAC Destino: %s", pkt_actual->mac_destino.c_str());
+                  ImGui::Text("MAC Origen:  %s", pkt_actual->mac_origen.c_str());
+                  ImGui::TreePop();
+                }
+
+                string titulo_ip = "IPv4";
+                if (ImGui::TreeNode(titulo_ip.c_str()))
+                {
+                  ImGui::Text("IP Origen:  %s", pkt_actual->IP_origen.c_str());
+                  ImGui::Text("IP Destino: %s", pkt_actual->IP_destino.c_str());
+                  ImGui::Text("Tiempo de vida (TTL): %d", pkt_actual->ttl);
+                  ImGui::TreePop();
+                }
+
+                string titulo_puertos = "Protocolo de transporte (" + pkt_actual->protocolo + ")";
+                if (ImGui::TreeNode(titulo_puertos.c_str()))
+                {
+                  ImGui::Text("Puerto Origen:  %s", pkt_actual->Puerto_origen.c_str());
+                  ImGui::Text("Puerto Destino: %s", pkt_actual->Puerto_destino.c_str());
+                  ImGui::TreePop();
+                }
+
+                if (pkt_actual->mostrar_dns)
+                {
+                  if (ImGui::TreeNode("Análisis DNS"))
+                  {
+                    ImGui::Text("Dominio consultado: %s", pkt_actual->nombre_dns.c_str());
+                    ImGui::TreePop();
+                  }
+                }
+                ImGui::EndTabItem();
               }
+
+              if (ImGui::BeginTabItem("Modo Rayos X"))
+              {
+                DetallePaqueteCapas datos_xray = TraducirPaqueteACapas(*pkt_actual);
+                DibujarModoCapas(datos_xray);
+                ImGui::EndTabItem();
+              }
+              ImGui::EndTabBar();
             }
 
             ImGui::TableSetColumnIndex(1);
@@ -920,16 +952,16 @@ int main()
 
             string hex_line;
             string ascii_line;
-            for (size_t i = 0; i < paquete_actual.raw_data.size(); i++)
+            for (size_t i = 0; i < pkt_actual->raw_data.size(); i++)
             {
               char hex_buf[4];
-              sprintf(hex_buf, "%02X ", paquete_actual.raw_data[i]);
+              sprintf(hex_buf, "%02X ", pkt_actual->raw_data[i]);
               hex_line += hex_buf;
 
-              char c = paquete_actual.raw_data[i];
+              char c = pkt_actual->raw_data[i];
               ascii_line += (c >= 32 && c <= 126) ? c : '.';
 
-              if ((i + 1) % 16 == 0 || i == paquete_actual.raw_data.size() - 1)
+              if ((i + 1) % 16 == 0 || i == pkt_actual->raw_data.size() - 1)
               {
                 while (hex_line.length() < 16 * 3)
                   hex_line += "   ";
@@ -1354,4 +1386,152 @@ void StyleColorsUmisumi(){
   colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.26f, 0.98f, 0.54f, 0.35f);
   colors[ImGuiCol_DragDropTarget]         = ImVec4(0.26f, 0.98f, 0.54f, 0.95f);
   colors[ImGuiCol_NavCursor]              = ImVec4(0.26f, 0.98f, 0.50f, 0.80f);
+}
+
+// --- LOGICA DE TRADUCCIÓN METAFÓRICA (MODO RAYOS X) ---
+DetallePaqueteCapas TraducirPaqueteACapas(const PaqueteInfo& pkt) {
+  DetallePaqueteCapas xray;
+
+  // 1. CAPA DE ENLACE (Ethernet - El Camión) 
+  xray.enlace.nombre = "Enlace";
+  xray.enlace.color = ImVec4(0.42f, 0.26f, 0.20f, 1.00f); // Tono Madera/Camión
+  xray.enlace.analogia = "Es el camion fisico de mensajeria (como DHL o Estafeta) que mueve los datos desde la tarjeta de red de tu computadora hasta el modem de tu casa.";
+  
+  char buf_enlace[256];
+  snprintf(buf_enlace, sizeof(buf_enlace), "Ethernet II | MAC Origen: %s -> MAC Destino: %s", 
+          pkt.mac_origen.c_str(), pkt.mac_destino.c_str());
+  xray.enlace.detalles_tecnicos = buf_enlace;
+
+  // 2. CAPA DE RED (IP - El Sobre Postal)
+  xray.red.nombre = "Red";
+  xray.red.color = ImVec4(0.20f, 0.35f, 0.55f, 1.00f); // Tono Azul
+  
+  xray.red.analogia = "Es el sobre de papel de la carta. Tiene escrita tu direccion de casa (IP Origen) y la direccion exacta del servidor en el mundo al que quieres llegar (IP Destino).";
+  char buf_red[256];
+  snprintf(buf_red, sizeof(buf_red), "Protocolo: %s | IP Origen: %s -> IP Destino: %s | TTL: %d", 
+          pkt.protocolo.c_str(), pkt.IP_origen.c_str(), pkt.IP_destino.c_str(), pkt.ttl);
+  xray.red.detalles_tecnicos = buf_red;
+
+  // 3. CAPA DE TRANSPORTE (TCP / UDP - Tipo de Envío)
+  xray.transporte.nombre = "Transporte";
+  xray.transporte.color = ImVec4(0.60f, 0.42f, 0.15f, 1.00f); // Tono Amarillo
+  
+  if (pkt.protocolo == "TCP" || pkt.protocolo == "HTTP" || pkt.protocolo == "HTTPS" || pkt.protocolo == "SSH / SFTP" || pkt.protocolo == "Telnet") {
+    xray.transporte.analogia = "Envio Certificado (TCP): Es una entrega que exige firma de recibido. Tu computadora y el servidor aseguran que ningun fragmento de la carta se pierda o llegue roto.";
+    char buf_trans[256];
+    snprintf(buf_trans, sizeof(buf_trans), "TCP | Puerto Origen: %s -> Puerto Destino: %s", pkt.Puerto_origen.c_str(), pkt.Puerto_destino.c_str());
+    xray.transporte.detalles_tecnicos = buf_trans;
+  } else if (pkt.protocolo == "UDP" || pkt.protocolo == "DNS" || pkt.protocolo == "NTP" || pkt.protocolo == "DHCP (Server)" || pkt.protocolo == "DHCP (Client)") {
+    xray.transporte.analogia = "Envio Rapido (UDP): Es como lanzar volantes desde un avion. No importa si alguno se vuela o se pierde, lo crucial es que llegue de inmediato. Ideal para juegos, streaming o consultas veloces.";
+    char buf_trans[256];
+    snprintf(buf_trans, sizeof(buf_trans), "UDP | Puerto Origen: %s -> Puerto Destino: %s", pkt.Puerto_origen.c_str(), pkt.Puerto_destino.c_str());
+    xray.transporte.detalles_tecnicos = buf_trans;
+  } else {
+    xray.transporte.analogia = "Protocolo de control directo o transmision simple de datos.";
+    xray.transporte.detalles_tecnicos = "Capa de Transporte Directa o Mensaje Especial.";
+  }
+
+  // 4. CAPA DE APLICACIÓN (Datos - La Carta Interna)
+  xray.datos.nombre = "Datos";
+  xray.datos.color = ImVec4(0.14f, 0.55f, 0.26f, 1.00f); // Tono Verde 
+  xray.datos.analogia = "¡La carta que va adentro de todo! Este es el mensaje real que tus aplicaciones (como tu navegador, Discord, Minecraft o Spotify) quieren transmitir.";
+  
+  char buf_datos[256];
+  snprintf(buf_datos, sizeof(buf_datos), "Carga Util (Payload): El paquete transporta %d Bytes de informacion pura.", pkt.longitud);
+  xray.datos.detalles_tecnicos = buf_datos;
+
+  return xray;
+}
+
+// --- INTERFAZ DE RENDERS VISUALES EN MATRIOSHKA ---
+void DibujarModoCapas(const DetallePaqueteCapas& paquete) {
+  ImGui::TextUnformatted("Modo Capas");
+  ImGui::Separator();
+  ImGui::Spacing();
+
+  static string capa_abierta = "";
+  static int ultimo_id_visto = -1;
+  
+  // Si cambiamos de paquete en la tabla, cerramos la inspección previa
+  if (idPaqueteSeleccionado != ultimo_id_visto) {
+    capa_abierta = "";
+    ultimo_id_visto = idPaqueteSeleccionado;
+  }
+
+  float ancho_disponible = ImGui::GetContentRegionAvail().x;
+  float alto_boton = 32.0f;
+  
+  // CAPA 1: ENLACE (Camión)
+  ImGui::PushStyleColor(ImGuiCol_Button, paquete.enlace.color);
+  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(paquete.enlace.color.x + 0.08f, paquete.enlace.color.y + 0.08f, paquete.enlace.color.z + 0.08f, 1.0f));
+  if (ImGui::Button("Capa de Enlace (El Camion de Mensajeria)", ImVec2(ancho_disponible, alto_boton))) {
+    capa_abierta = "Enlace";
+  }
+  ImGui::PopStyleColor(2);
+
+  // CAPA 2: RED (El Sobre)
+  ImGui::Indent(20.0f); 
+  ancho_disponible -= 40.0f;
+  
+  ImGui::PushStyleColor(ImGuiCol_Button, paquete.red.color);
+  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(paquete.red.color.x + 0.08f, paquete.red.color.y + 0.08f, paquete.red.color.z + 0.08f, 1.0f));
+  if (ImGui::Button("Capa de Red (El Sobre Postal)", ImVec2(ancho_disponible, alto_boton))) {
+    capa_abierta = "Red";
+  }
+  ImGui::PopStyleColor(2);
+
+  // CAPA 3: TRANSPORTE (Tipo de Envío)
+  ImGui::Indent(20.0f);
+  ancho_disponible -= 40.0f;
+
+  ImGui::PushStyleColor(ImGuiCol_Button, paquete.transporte.color);
+  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(paquete.transporte.color.x + 0.08f, paquete.transporte.color.y + 0.08f, paquete.transporte.color.z + 0.08f, 1.0f));
+  if (ImGui::Button("Capa de Transporte (Forma de Envio)", ImVec2(ancho_disponible, alto_boton))) {
+    capa_abierta = "Transporte";
+  }
+  ImGui::PopStyleColor(2);
+
+  // CAPA 4: DATOS (La Carta)
+  ImGui::Indent(20.0f);
+  ancho_disponible -= 40.0f;
+
+  ImGui::PushStyleColor(ImGuiCol_Button, paquete.datos.color);
+  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(paquete.datos.color.x + 0.08f, paquete.datos.color.y + 0.08f, paquete.datos.color.z + 0.08f, 1.0f));
+  if (ImGui::Button("Capa de Datos (La Carta Secreta)", ImVec2(ancho_disponible, alto_boton))) {
+    capa_abierta = "Datos";
+  }
+  ImGui::PopStyleColor(2);
+
+  // Restauramos las sangrías de la pila gráfica de ImGui
+  ImGui::Unindent(60.0f);
+
+  ImGui::Spacing();
+  ImGui::Separator();
+  ImGui::Spacing();
+
+  // PANEL DINÁMICO DE DETALLES
+  if (!capa_abierta.empty()) {
+    ImGui::BeginChild("PanelCapasExplicacion", ImVec2(0, 120), true, ImGuiWindowFlags_None);
+    
+    const CapaTraducida* capa_actual = nullptr;
+    if (capa_abierta == "Enlace")       capa_actual = &paquete.enlace;
+    else if (capa_abierta == "Red")     capa_actual = &paquete.red;
+    else if (capa_abierta == "Transporte") capa_actual = &paquete.transporte;
+    else if (capa_abierta == "Datos")   capa_actual = &paquete.datos;
+
+    if (capa_actual) {
+      ImGui::TextColored(ImVec4(0.00f, 0.54f, 0.21f, 1.00f), "🔍 Explicacion Sencilla:");
+      ImGui::SameLine(); 
+      ImGui::TextWrapped("%s", capa_actual->analogia);
+      
+      ImGui::Spacing();
+      
+      ImGui::TextColored(ImVec4(0.15f, 0.45f, 0.85f, 1.00f), "💻 Datos Tecnicos Reales:");
+      ImGui::SameLine(); 
+      ImGui::TextWrapped("%s", capa_actual->detalles_tecnicos.c_str());
+    }
+    ImGui::EndChild();
+  } else {
+    ImGui::TextDisabled("Haz clic en cualquiera de los bloques de color apilados arriba para examinar su contenido.");
+  }
 }

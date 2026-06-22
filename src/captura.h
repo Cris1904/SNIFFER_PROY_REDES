@@ -294,7 +294,7 @@ void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_cha
         protocolo = asignar_protocolo(sport, dport, ih->proto);
         PaqueteInfo nuevo_pkt(id, timestr, (int)header->len, src_ip, dst_ip, protocolo, src_puerto, dst_puerto, ttl_value, mac_src_str, mac_dst_str, pkt_data, (int)header->len, dominio, es_dns);      
         lista_paquetes.push_back(nuevo_pkt);
-      } else if (ih->proto == 1) {// ICMP (Ping)
+      } else if (ih->proto == 1) {// ICMP 
         PaqueteInfo nuevo_pkt(id, timestr, (int)header->len, src_ip, dst_ip, "ICMP", "N/A", "N/A", ttl_value, mac_src_str, mac_dst_str, pkt_data, (int)header->len, "", false);
         lista_paquetes.push_back(nuevo_pkt);
       } else { // Cualquier otro tráfico IP
