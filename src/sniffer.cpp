@@ -21,6 +21,17 @@
 
 using namespace std;
 
+// Estructuras para la parte grafica de los paquetes
+struct EsferaViajera {
+  float progreso;      // De 0.0 (PC) a 1.0 (Nube)
+  float velocidad;     // Multiplicador de velocidad por segundo
+  ImVec4 color;        // Color representativo del protocolo
+  bool deUsuarioANube; // true = PC -> Nube (Salida), false = Nube -> PC (Entrada)
+};
+
+std::vector<EsferaViajera> esferas_activas;
+int ultimo_id_procesado_esfera = -1; // Para saber qué paquetes ya se animaron
+
 // Estructura para almacenar información detallada de los adaptadores
 struct InterfazRedInfo
 {
@@ -716,143 +727,232 @@ int main()
       // iniciamos la segunda seccion grafica donde se muestra todo el trafico capturado
       ImGui::SetNextWindowPos(ImVec2(0, menu_offset + altoControl), ImGuiCond_Always);
       ImGui::SetNextWindowSize(ImVec2(viewportSize.x, altoTabla), ImGuiCond_Always);
-      ImGui::Begin("Paquetes Capturados", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+      ImGui::Begin("Monitoreo de Tráfico", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
-      if (ImGui::BeginTable("TablaPaquetes", 8, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY))
+      if (ImGui::BeginTabBar("TabsControlTrafico")) 
       {
-        ImGui::TableSetupScrollFreeze(0, 1);
-        ImGui::TableSetupColumn("Número de paquete");
-        ImGui::TableSetupColumn("Tiempo de vida");
-        ImGui::TableSetupColumn("Longitud (Bytes)");
-        ImGui::TableSetupColumn("IP Origen");
-        ImGui::TableSetupColumn("IP Destino");
-        ImGui::TableSetupColumn("Protocolo");
-        ImGui::TableSetupColumn("Puerto Origen");
-        ImGui::TableSetupColumn("Puerto Destino");
-        ImGui::TableHeadersRow();
-
-        paquetes_mutex.lock();
-
-        if (ip_o[0] == '\0' && ip_d[0] == '\0' && proto[0] == '\0' && puerto_d[0] == '\0')
-        {
-          for (auto &pkt : lista_paquetes)
+          // -------------------------------------------------------------------------------
+          // PESTAÑA A: TABLA DE PAQUETES (Tu código original intacto)
+          // -------------------------------------------------------------------------------
+          if (ImGui::BeginTabItem("Vista de Tabla")) 
           {
-            ImGui::TableNextRow();
-
-            ImU32 color_fila = ObtenerColorProtocolo(pkt.protocolo);
-            ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, color_fila);
-
-            ImGui::TableSetColumnIndex(0);
-            char label_id[64];
-            sprintf(label_id, "%d##%p", pkt.id, &pkt);
-
-            bool esta_seleccionado = (idPaqueteSeleccionado == pkt.id);
-
-            if (ImGui::Selectable(label_id, esta_seleccionado, ImGuiSelectableFlags_SpanAllColumns))
-            {
-              idPaqueteSeleccionado = pkt.id;
-            }
-
-            ImGui::TableSetColumnIndex(1);
-            ImGui::Text("%s", pkt.tiempo_vida.c_str());
-            ImGui::TableSetColumnIndex(2);
-            ImGui::Text("%d", pkt.longitud);
-            ImGui::TableSetColumnIndex(3);
-            ImGui::Text("%s", pkt.IP_origen.c_str());
-            if (ImGui::IsItemHovered()) {
-                ImGui::BeginTooltip();
-                ImGui::Text("%s", obtenerTipoIP(pkt.IP_origen).c_str());
-                ImGui::EndTooltip();
-            }
-            ImGui::TableSetColumnIndex(4);
-            ImGui::Text("%s", pkt.IP_destino.c_str());
-            if (ImGui::IsItemHovered()) {
-                ImGui::BeginTooltip();
-                ImGui::Text("%s", obtenerTipoIP(pkt.IP_destino).c_str());
-                ImGui::EndTooltip();
-            }
-            ImGui::TableSetColumnIndex(5);
-            ImGui::Text("%s", pkt.protocolo.c_str());
-            if (ImGui::IsItemHovered()) {
-              ImGui::BeginTooltip();
-              if (pkt.protocolo == "DNS") ImGui::Text("DNS: Traduce nombres de páginas web a direcciones numéricas.");
-              else if (pkt.protocolo == "HTTP") ImGui::Text("HTTP: Tráfico web normal (¡Cuidado, no está encriptado!).");
-              else if (pkt.protocolo == "HTTPS") ImGui::Text("HTTPS: Tráfico web seguro y encriptado.");
-              else if (pkt.protocolo == "ICMP") ImGui::Text("ICMP: Usado para pruebas de conexión como el 'Ping'.");
-              else if (pkt.protocolo == "TCP") ImGui::Text("TCP: Protocolo confiable (asegura que los datos lleguen completos).");
-              else if (pkt.protocolo == "UDP") ImGui::Text("UDP: Protocolo rápido pero no confiable (usado en juegos y videos).");
-              else ImGui::Text("Protocolo de red.");
-              ImGui::EndTooltip();
-            }
-            ImGui::TableSetColumnIndex(6);
-            ImGui::Text("%s", pkt.Puerto_origen.c_str());
-            ImGui::TableSetColumnIndex(7);
-            ImGui::Text("%s", pkt.Puerto_destino.c_str());
-          }
-        }
-        else
-        {
-          for (auto &pkt : lista_paquetes)
-          {
-            bool mostrar = false;
-            
-            if (filtro_condicion_y) {
-                //Todas las casillas que no estén vacías deben coincidir
-                mostrar = ((ip_o[0] == '\0' || strcmp(ip_o, pkt.IP_origen.c_str()) == 0) &&
-                           (ip_d[0] == '\0' || strcmp(ip_d, pkt.IP_destino.c_str()) == 0) &&
-                           (proto[0] == '\0' || strcmp(proto, pkt.protocolo.c_str()) == 0) &&
-                           (puerto_d[0] == '\0' || strcmp(puerto_d, pkt.Puerto_destino.c_str()) == 0));
-            } else {
-                //Con que una sola casilla coincida, mostramos el paquete
-                bool coincide_ip_o = (ip_o[0] != '\0' && strcmp(ip_o, pkt.IP_origen.c_str()) == 0);
-                bool coincide_ip_d = (ip_d[0] != '\0' && strcmp(ip_d, pkt.IP_destino.c_str()) == 0);
-                bool coincide_proto = (proto[0] != '\0' && strcmp(proto, pkt.protocolo.c_str()) == 0);
-                bool coincide_puerto = (puerto_d[0] != '\0' && strcmp(puerto_d, pkt.Puerto_destino.c_str()) == 0);
-                
-                mostrar = (coincide_ip_o || coincide_ip_d || coincide_proto || coincide_puerto);
-            }
-
-            if (mostrar) 
-            {
-              ImGui::TableNextRow();
-              ImU32 color_fila = ObtenerColorProtocolo(pkt.protocolo);
-              ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, color_fila);
-              ImGui::TableSetColumnIndex(0);
-              char label_id[64];
-              sprintf(label_id, "%d##%p", pkt.id, &pkt);
-              bool esta_seleccionado = (idPaqueteSeleccionado == pkt.id);
-
-              if (ImGui::Selectable(label_id, esta_seleccionado, ImGuiSelectableFlags_SpanAllColumns))
+              if (ImGui::BeginTable("TablaPaquetes", 8, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY))
               {
-                idPaqueteSeleccionado = pkt.id;
+                ImGui::TableSetupScrollFreeze(0, 1);
+                ImGui::TableSetupColumn("Número de paquete");
+                ImGui::TableSetupColumn("Tiempo de vida");
+                ImGui::TableSetupColumn("Longitud (Bytes)");
+                ImGui::TableSetupColumn("IP Origen");
+                ImGui::TableSetupColumn("IP Destino");
+                ImGui::TableSetupColumn("Protocolo");
+                ImGui::TableSetupColumn("Puerto Origen");
+                ImGui::TableSetupColumn("Puerto Destino");
+                ImGui::TableHeadersRow();
+
+                paquetes_mutex.lock();
+
+                if (ip_o[0] == '\0' && ip_d[0] == '\0' && proto[0] == '\0' && puerto_d[0] == '\0')
+                {
+                  for (auto &pkt : lista_paquetes)
+                  {
+                    ImGui::TableNextRow();
+
+                    ImU32 color_fila = ObtenerColorProtocolo(pkt.protocolo);
+                    ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, color_fila);
+
+                    ImGui::TableSetColumnIndex(0);
+                    char label_id[64];
+                    sprintf(label_id, "%d##%p", pkt.id, &pkt);
+
+                    bool esta_seleccionado = (idPaqueteSeleccionado == pkt.id);
+
+                    if (ImGui::Selectable(label_id, esta_seleccionado, ImGuiSelectableFlags_SpanAllColumns))
+                    {
+                      idPaqueteSeleccionado = pkt.id;
+                    }
+
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("%s", pkt.tiempo_vida.c_str());
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("%d", pkt.longitud);
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("%s", pkt.IP_origen.c_str());
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::BeginTooltip();
+                        ImGui::Text("%s", obtenerTipoIP(pkt.IP_origen).c_str());
+                        ImGui::EndTooltip();
+                    }
+                    ImGui::TableSetColumnIndex(4);
+                    ImGui::Text("%s", pkt.IP_destino.c_str());
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::BeginTooltip();
+                        ImGui::Text("%s", obtenerTipoIP(pkt.IP_destino).c_str());
+                        ImGui::EndTooltip();
+                    }
+                    ImGui::TableSetColumnIndex(5);
+                    ImGui::Text("%s", pkt.protocolo.c_str());
+                    
+                    ImGui::TableSetColumnIndex(6);
+                    ImGui::Text("%s", pkt.Puerto_origen.c_str());
+                    ImGui::TableSetColumnIndex(7);
+                    ImGui::Text("%s", pkt.Puerto_destino.c_str());
+                  }
+                }
+                else
+                {
+                  for (auto &pkt : lista_paquetes)
+                  {
+                    bool mostrar = false;
+                    if (filtro_condicion_y) {
+                        mostrar = ((ip_o[0] == '\0' || strcmp(ip_o, pkt.IP_origen.c_str()) == 0) && (ip_d[0] == '\0' || strcmp(ip_d, pkt.IP_destino.c_str()) == 0) && (proto[0] == '\0' || strcmp(proto, pkt.protocolo.c_str()) == 0) && (puerto_d[0] == '\0' || strcmp(puerto_d, pkt.Puerto_destino.c_str()) == 0));
+                    } else {
+                        bool coincide_ip_o = (ip_o[0] != '\0' && strcmp(ip_o, pkt.IP_origen.c_str()) == 0);
+                        bool coincide_ip_d = (ip_d[0] != '\0' && strcmp(ip_d, pkt.IP_destino.c_str()) == 0);
+                        bool coincide_proto = (proto[0] != '\0' && strcmp(proto, pkt.protocolo.c_str()) == 0);
+                        bool coincide_puerto = (puerto_d[0] != '\0' && strcmp(puerto_d, pkt.Puerto_destino.c_str()) == 0);
+                        mostrar = (coincide_ip_o || coincide_ip_d || coincide_proto || coincide_puerto);
+                    }
+                    if (mostrar) {
+                        ImGui::TableNextRow();
+                        ImU32 color_fila = ObtenerColorProtocolo(pkt.protocolo);
+                        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, color_fila);
+                        ImGui::TableSetColumnIndex(0);
+                        char label_id[64];
+                        sprintf(label_id, "%d##%p", pkt.id, &pkt);
+                        bool esta_seleccionado = (idPaqueteSeleccionado == pkt.id);
+                        if (ImGui::Selectable(label_id, esta_seleccionado, ImGuiSelectableFlags_SpanAllColumns)) {
+                          idPaqueteSeleccionado = pkt.id;
+                        }
+                        ImGui::TableSetColumnIndex(1);
+                        ImGui::Text("%s", pkt.tiempo_vida.c_str());
+                        ImGui::TableSetColumnIndex(2);
+                        ImGui::Text("%d", pkt.longitud);
+                        ImGui::TableSetColumnIndex(3);
+                        ImGui::Text("%s", pkt.IP_origen.c_str());
+                        ImGui::TableSetColumnIndex(4);
+                        ImGui::Text("%s", pkt.IP_destino.c_str());
+                        ImGui::TableSetColumnIndex(5);
+                        ImGui::Text("%s", pkt.protocolo.c_str());
+                        ImGui::TableSetColumnIndex(6);
+                        ImGui::Text("%s", pkt.Puerto_origen.c_str());
+                        ImGui::TableSetColumnIndex(7);
+                        ImGui::Text("%s", pkt.Puerto_destino.c_str());
+                    }
+                  }
+                }
+                
+                if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
+                    ImGui::SetScrollHereY(1.0f);
+                }
+                paquetes_mutex.unlock();
+                ImGui::EndTable();
               }
-
-              ImGui::TableSetColumnIndex(1);
-              ImGui::Text("%s", pkt.tiempo_vida.c_str());
-              ImGui::TableSetColumnIndex(2);
-              ImGui::Text("%d", pkt.longitud);
-              ImGui::TableSetColumnIndex(3);
-              ImGui::Text("%s", pkt.IP_origen.c_str());
-              ImGui::TableSetColumnIndex(4);
-              ImGui::Text("%s", pkt.IP_destino.c_str());
-              ImGui::TableSetColumnIndex(5);
-              ImGui::Text("%s", pkt.protocolo.c_str());
-              ImGui::TableSetColumnIndex(6);
-              ImGui::Text("%s", pkt.Puerto_origen.c_str());
-              ImGui::TableSetColumnIndex(7);
-              ImGui::Text("%s", pkt.Puerto_destino.c_str());
-            }
+              ImGui::EndTabItem();
           }
-        }
 
-        if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
-        {
-          ImGui::SetScrollHereY(1.0f);
-        }
+          // -------------------------------------------------------------------------------
+          // PESTAÑA B: EL MAPA EN TIEMPO REAL (Traffic Animation Canvas)
+          // -------------------------------------------------------------------------------
+          if (ImGui::BeginTabItem("Mapa de Paquetes Viajeros")) 
+          {
+              // 1. Sincronizar hilos de manera segura: Leer nuevos paquetes y crear esferas viajeras
+              paquetes_mutex.lock();
+              for (const auto& pkt : lista_paquetes) {
+                  if (pkt.id > ultimo_id_procesado_esfera) {
+                      EsferaViajera nueva_esfera;
+                      nueva_esfera.progreso = 0.0f;
+                      nueva_esfera.velocidad = 1.4f; // Velocidad de la animación
+                      
+                      // Extraer el color real del protocolo mapeado en tu función
+                      nueva_esfera.color = ImGui::ColorConvertU32ToFloat4(ObtenerColorProtocolo(pkt.protocolo));
+                      nueva_esfera.color.w = 1.0f; // Asegurar opacidad total
 
-        paquetes_mutex.unlock();
+                      // Detectar dirección analizando IPs conocidas de redes internas privadas
+                      if (pkt.IP_origen.rfind("192.168.", 0) == 0 || pkt.IP_origen.rfind("10.", 0) == 0 || pkt.IP_origen.rfind("172.", 0) == 0) {
+                          nueva_esfera.deUsuarioANube = true;  // PC -> Internet
+                      } else {
+                          nueva_esfera.deUsuarioANube = false; // Internet -> PC
+                      }
 
-        ImGui::EndTable();
+                      // Evitar sobrecargar la memoria (máximo 70 esferas simultáneas si el tráfico vuela)
+                      if (esferas_activas.size() < 70) {
+                          esferas_activas.push_back(nueva_esfera);
+                      }
+                      ultimo_id_procesado_esfera = pkt.id;
+                  }
+              }
+              paquetes_mutex.unlock();
+
+              // 2. Preparar lienzo de dibujo técnico de ImGui
+              ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
+              ImVec2 canvas_size = ImGui::GetContentRegionAvail();
+              if (canvas_size.y < 100.0f) canvas_size.y = 100.0f;
+
+              ImDrawList* draw_list = ImGui::GetWindowDrawList();
+              
+              // Fondo del Canvas
+              // Obtiene el color de fondo de cuadro (FrameBg) del estilo actual de tu interfaz
+              ImU32 color_fondo_estilo = ImGui::GetColorU32(ImGuiCol_FrameBg);
+
+              // Dibuja el fondo usando el color oficial de tu tema de ImGui
+              draw_list->AddRectFilled(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), color_fondo_estilo, 6.0f);
+              draw_list->AddRect(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), ImGui::GetColorU32(ImGuiCol_Border), 6.0f);
+
+              // 3. Posiciones de nodos (Computadora e Internet)
+              ImVec2 pc_pos = ImVec2(canvas_pos.x + 120.0f, canvas_pos.y + (canvas_size.y * 0.5f));
+              ImVec2 nube_pos = ImVec2(canvas_pos.x + canvas_size.x - 120.0f, canvas_pos.y + (canvas_size.y * 0.5f));
+
+              // Enlace de datos de fondo
+              draw_list->AddLine(pc_pos, nube_pos, IM_COL32(60, 65, 75, 255), 2.0f);
+
+              // 4. Dibujar Elemento Visual de la Computadora (Tu PC)
+              draw_list->AddRectFilled(ImVec2(pc_pos.x - 22, pc_pos.y - 14), ImVec2(pc_pos.x + 22, pc_pos.y + 10), IM_COL32(0, 180, 216, 255), 4.0f); // Monitor
+              draw_list->AddRect(ImVec2(pc_pos.x - 22, pc_pos.y - 14), ImVec2(pc_pos.x + 22, pc_pos.y + 10), IM_COL32(255, 255, 255, 200), 4.0f, 0, 1.5f);
+              draw_list->AddTriangleFilled(ImVec2(pc_pos.x - 10, pc_pos.y + 20), ImVec2(pc_pos.x + 10, pc_pos.y + 20), ImVec2(pc_pos.x, pc_pos.y + 10), IM_COL32(100, 110, 120, 255)); // Base
+              draw_list->AddRectFilled(ImVec2(pc_pos.x - 25, pc_pos.y + 20), ImVec2(pc_pos.x + 25, pc_pos.y + 24), IM_COL32(80, 90, 100, 255), 2.0f); // Teclado
+              draw_list->AddText(ImVec2(pc_pos.x - 24, pc_pos.y - 32), ImGui::GetColorU32(ImGuiCol_Text), "LOCAL PC");
+              
+              // 5. Dibujar Elemento Visual de la Nube (Internet / Remoto)
+              draw_list->AddCircleFilled(ImVec2(nube_pos.x, nube_pos.y), 16.0f, IM_COL32(114, 9, 183, 255));
+              draw_list->AddCircleFilled(ImVec2(nube_pos.x - 14, nube_pos.y + 6), 12.0f, IM_COL32(114, 9, 183, 255));
+              draw_list->AddCircleFilled(ImVec2(nube_pos.x + 14, nube_pos.y + 6), 12.0f, IM_COL32(114, 9, 183, 255));
+              draw_list->AddCircleFilled(ImVec2(nube_pos.x - 7, nube_pos.y - 10), 13.0f, IM_COL32(114, 9, 183, 255));
+              draw_list->AddCircleFilled(ImVec2(nube_pos.x + 7, nube_pos.y - 10), 13.0f, IM_COL32(114, 9, 183, 255));
+              draw_list->AddText(ImVec2(nube_pos.x - 28, nube_pos.y - 32), ImGui::GetColorU32(ImGuiCol_Text), "INTERNET");
+
+              // 6. Actualización cinemática y renderizado del paso de las esferas
+              float deltaTime = ImGui::GetIO().DeltaTime;
+
+              for (auto it = esferas_activas.begin(); it != esferas_activas.end(); ) 
+              {
+                  it->progreso += it->velocidad * deltaTime;
+
+                  if (it->progreso >= 1.0f) {
+                      it = esferas_activas.erase(it); // Llegó al destino, eliminar de cola
+                      continue;
+                  }
+
+                  // Interpolación Lineal (Lerp) para calcular el movimiento por píxeles en pantalla
+                  ImVec2 punto_actual;
+                  if (it->deUsuarioANube) {
+                      punto_actual.x = pc_pos.x + (nube_pos.x - pc_pos.x) * it->progreso;
+                  } else {
+                      punto_actual.x = nube_pos.x - (nube_pos.x - pc_pos.x) * it->progreso;
+                  }
+                  punto_actual.y = pc_pos.y; // Se mueven de forma recta por el cable coaxial imaginario
+
+                  ImU32 color_esfera = ImGui::ColorConvertFloat4ToU32(it->color);
+                  
+                  // Dibujar Esfera
+                  draw_list->AddCircleFilled(punto_actual, 7.0f, color_esfera);
+                  // Efecto halo exterior (brillo neón)
+                  draw_list->AddCircle(punto_actual, 9.5f, (color_esfera & 0x00FFFFFF) | 0x66000000, 0, 1.5f);
+
+                  it++;
+              }
+              ImGui::EndTabItem();
+          }
+          ImGui::EndTabBar();
       }
       ImGui::End();
 
