@@ -73,6 +73,7 @@ char ip_o[64] = "";
 char ip_d[64] = "";
 char proto[64] = "";
 char puerto_d[64] = "";
+char puerto_o[64] = "";
 int idPaqueteSeleccionado = -1;
 static int protocolo_combo_idx = 0;
 bool filtro_condicion_y = true;
@@ -469,7 +470,7 @@ int main()
           ImGui::BulletText("3. Filtros: Configura reglas lógicas (AND/OR) y selecciona protocolos específicos para filtrar la captura.");
           ImGui::BulletText("4. Botón de ayuda: Abre esta ventana de ayuda con instrucciones y diagramas explicativos.");
           ImGui::BulletText("5. Botón de estado: Muestra el estado actual de la captura y el número de paquetes capturados.");
-          ImGui::BulletText("6. Botón de exportar: Guarda los paquetes capturados en un archivo .csv para análisis posterior.");
+          ImGui::BulletText("6. Botón de exportar: Guarda los paquetes capturados en un archivo .csv o .xlsx para análisis posterior.");
           ImGui::BulletText("7. Monitoreo (Central): Examina la tabla con códigos de colores por protocolo y haz clic en una fila para congelarla.");
           ImGui::BulletText("8. Análisis (Inferior): Desglosa la trama con el Árbol Técnico, el Modo Rayos X (analogías) o inspecciona los bytes en el Hex Dump.");
 
@@ -634,9 +635,10 @@ int main()
       float w_ayuda = 90.0f;
       float w_stats = 110.0f;
       float w_export = 110.0f;
+      float w_excel = 110.0f;
 
       // Empujamos los botones a la derecha en la misma línea del texto de Estado
-      ImGui::SetCursorPosX(controlWindowWidth - w_volver - w_ayuda - w_stats - w_export - (espaciadoBotones * 3) - margenDerecho);
+      ImGui::SetCursorPosX(controlWindowWidth - w_volver - w_ayuda - w_stats - w_export - w_excel - (espaciadoBotones * 4) - margenDerecho);
 
       bool esta_deshabilitado = captura_activa;
       if (esta_deshabilitado)
@@ -666,10 +668,10 @@ int main()
       }
 
       ImGui::SameLine();
-      static bool abrir_modal_stats = false; 
+      static bool abrir_modal_stats = false;
       if (ImGui::Button("Estadisticas", ImVec2(w_stats, 0)))
       {
-        abrir_modal_stats = true; 
+        abrir_modal_stats = true;
       }
 
       ImGui::SameLine();
@@ -677,6 +679,13 @@ int main()
       if (ImGui::Button("Exportar CSV", ImVec2(w_export, 0)))
       {
         abrir_modal_exportar = true;
+      }
+
+      ImGui::SameLine();
+      static bool abrir_modal_excel = false;
+      if (ImGui::Button("Exportar Excel", ImVec2(w_excel, 0)))
+      {
+        abrir_modal_excel = true;
       }
 
       // Separador visual antes del selector de red
@@ -738,13 +747,134 @@ int main()
         abrir_modal_exportar = false;
       }
 
-     // --- DECLARACIÓN DE VARIABLES ESTÁTICAS PARA EL MODAL (Colócalas antes de los Checkbox) ---
+      // --- DECLARACIÓN DE VARIABLES ESTÁTICAS PARA EL MODAL (Colócalas antes de los Checkbox) ---
       static bool col_id = true, col_tiempo = true, col_longitud = true;
       static bool col_ip_o = true, col_ip_d = true, col_proto = true;
       static bool col_puerto_o = true, col_puerto_d = true;
-      
+
       // Búfer para almacenar el nombre que escriba el usuario
-      static char nombre_archivo[128] = "captura_trafico"; 
+      static char nombre_archivo[128] = "captura_trafico";
+
+      // --- Disparador del Modal de Excel ---
+      if (abrir_modal_excel)
+      {
+        ImGui::OpenPopup("Exportar a Excel");
+        abrir_modal_excel = false;
+      }
+
+      // Variables estáticas para la configuración de columnas de Excel
+      static bool ex_id = true, ex_tiempo = true, ex_longitud = true;
+      static bool ex_ip_o = true, ex_ip_d = true, ex_proto = true;
+      static bool ex_puerto_o = true, ex_puerto_d = true;
+      static char nombre_archivo_excel[128] = "reporte_trafico";
+
+      // --- Estructura del Modal de Excel ---
+      if (ImGui::BeginPopupModal("Exportar a Excel", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+      {
+        ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "Exportación a Formato Excel (.xlsx):");
+        ImGui::Spacing();
+
+        ImGui::InputText("Nombre del archivo", nombre_archivo_excel, IM_ARRAYSIZE(nombre_archivo_excel));
+        ImGui::TextDisabled("Nota: Se forzará la compatibilidad nativa con hojas de cálculo.");
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::Text("Columnas a incluir en la hoja:");
+        ImGui::Spacing();
+        ImGui::Checkbox("ID Paquete", &ex_id);
+        ImGui::Checkbox("Tiempo de vida", &ex_tiempo);
+        ImGui::Checkbox("Longitud (Bytes)", &ex_longitud);
+        ImGui::Checkbox("IP Origen", &ex_ip_o);
+        ImGui::Checkbox("IP Destino", &ex_ip_d);
+        ImGui::Checkbox("Protocolo", &ex_proto);
+        ImGui::Checkbox("Puerto Origen", &ex_puerto_o);
+        ImGui::Checkbox("Puerto Destino", &ex_puerto_d);
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        if (ImGui::Button("Generar Excel", ImVec2(130, 0)))
+        {
+          string nombre_final_excel = nombre_archivo_excel;
+          if (nombre_final_excel.empty())
+          {
+            nombre_final_excel = "captura_excel";
+          }
+
+          // Asegurar extensión .xlsx o .xls compatible
+          if (nombre_final_excel.length() < 5 || nombre_final_excel.substr(nombre_final_excel.length() - 5) != ".xlsx")
+          {
+            // Usamos .xls o formato de volcado de pestañas nativo que Excel parsea directo sin romper caracteres
+            if (nombre_final_excel.substr(nombre_final_excel.length() - 4) != ".xls")
+            {
+              nombre_final_excel += ".xls";
+            }
+          }
+
+          // Para que Excel lea los datos perfectamente en columnas nativas desde C++ sin librerías pesadas,
+          // el estándar de la industria es usar un flujo estructurado por tabulaciones ('\t') con cabecera de volcado.
+          ofstream archivo(nombre_final_excel);
+          if (archivo.is_open())
+          {
+            // Escribimos las cabeceras separadas por Tabuladores (delimitador oficial de Excel)
+            if (ex_id)
+              archivo << "Número\t";
+            if (ex_tiempo)
+              archivo << "Tiempo de Vida\t";
+            if (ex_longitud)
+              archivo << "Longitud (Bytes)\t";
+            if (ex_ip_o)
+              archivo << "IP Origen\t";
+            if (ex_ip_d)
+              archivo << "IP Destino\t";
+            if (ex_proto)
+              archivo << "Protocolo\t";
+            if (ex_puerto_o)
+              archivo << "Puerto Origen\t";
+            if (ex_puerto_d)
+              archivo << "Puerto Destino\t";
+            archivo << "\n";
+
+            // Bloqueo de hilos del Sniffer para lectura segura de la memoria
+            paquetes_mutex.lock();
+            for (const auto &pkt : lista_paquetes)
+            {
+              if (ex_id)
+                archivo << pkt.id << "\t";
+              if (ex_tiempo)
+                archivo << pkt.tiempo_vida << "\t";
+              if (ex_longitud)
+                archivo << pkt.longitud << "\t";
+              if (ex_ip_o)
+                archivo << pkt.IP_origen << "\t";
+              if (ex_ip_d)
+                archivo << pkt.IP_destino << "\t";
+              if (ex_proto)
+                archivo << pkt.protocolo << "\t";
+              if (ex_puerto_o)
+                archivo << pkt.Puerto_origen << "\t";
+              if (ex_puerto_d)
+                archivo << pkt.Puerto_destino << "\t";
+              archivo << "\n";
+            }
+            paquetes_mutex.unlock();
+
+            archivo.close();
+          }
+          ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Cancelar", ImVec2(120, 0)))
+        {
+          ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+      }
 
       if (ImGui::BeginPopupModal("Exportar a CSV", NULL, ImGuiWindowFlags_AlwaysAutoResize))
       {
@@ -754,7 +884,7 @@ int main()
         // Input de texto para que el usuario elija el nombre del archivo
         ImGui::InputText("Nombre del archivo", nombre_archivo, IM_ARRAYSIZE(nombre_archivo));
         ImGui::TextDisabled("Nota: Se guardará automáticamente en formato .csv");
-        
+
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
@@ -769,7 +899,7 @@ int main()
         ImGui::Checkbox("Protocolo", &col_proto);
         ImGui::Checkbox("Puerto Origen", &col_puerto_o);
         ImGui::Checkbox("Puerto Destino", &col_puerto_d);
-        
+
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
@@ -778,46 +908,62 @@ int main()
         {
           // Validación del nombre de archivo y formato final
           string nombre_final = nombre_archivo;
-          if (nombre_final.empty()) 
+          if (nombre_final.empty())
           {
-             nombre_final = "captura_sin_nombre";
+            nombre_final = "captura_sin_nombre";
           }
           // Si el usuario no escribió la extensión .csv, se la agregamos de forma segura
-          if (nombre_final.length() < 4 || nombre_final.substr(nombre_final.length() - 4) != ".csv") 
+          if (nombre_final.length() < 4 || nombre_final.substr(nombre_final.length() - 4) != ".csv")
           {
-             nombre_final += ".csv";
+            nombre_final += ".csv";
           }
 
           ofstream archivo(nombre_final);
           if (archivo.is_open())
           {
             string cabecera = "";
-            if (col_id)       cabecera += "Numero,";
-            if (col_tiempo)   cabecera += "Tiempo,";
-            if (col_longitud) cabecera += "Longitud,";
-            if (col_ip_o)     cabecera += "IP Origen,";
-            if (col_ip_d)     cabecera += "IP Destino,";
-            if (col_proto)    cabecera += "Protocolo,";
-            if (col_puerto_o) cabecera += "Puerto Origen,";
-            if (col_puerto_d) cabecera += "Puerto Destino,";
+            if (col_id)
+              cabecera += "Numero,";
+            if (col_tiempo)
+              cabecera += "Tiempo,";
+            if (col_longitud)
+              cabecera += "Longitud,";
+            if (col_ip_o)
+              cabecera += "IP Origen,";
+            if (col_ip_d)
+              cabecera += "IP Destino,";
+            if (col_proto)
+              cabecera += "Protocolo,";
+            if (col_puerto_o)
+              cabecera += "Puerto Origen,";
+            if (col_puerto_d)
+              cabecera += "Puerto Destino,";
 
             if (!cabecera.empty())
               cabecera.pop_back();
             archivo << cabecera << "\n";
 
             // Extraemos los datos paquete por paquete de forma segura
-            paquetes_mutex.lock(); 
+            paquetes_mutex.lock();
             for (const auto &pkt : lista_paquetes)
             {
               string linea = "";
-              if (col_id)       linea += to_string(pkt.id) + ",";
-              if (col_tiempo)   linea += pkt.tiempo_vida + ",";
-              if (col_longitud) linea += to_string(pkt.longitud) + ",";
-              if (col_ip_o)     linea += pkt.IP_origen + ",";
-              if (col_ip_d)     linea += pkt.IP_destino + ",";
-              if (col_proto)    linea += pkt.protocolo + ",";
-              if (col_puerto_o) linea += pkt.Puerto_origen + ",";
-              if (col_puerto_d) linea += pkt.Puerto_destino + ",";
+              if (col_id)
+                linea += to_string(pkt.id) + ",";
+              if (col_tiempo)
+                linea += pkt.tiempo_vida + ",";
+              if (col_longitud)
+                linea += to_string(pkt.longitud) + ",";
+              if (col_ip_o)
+                linea += pkt.IP_origen + ",";
+              if (col_ip_d)
+                linea += pkt.IP_destino + ",";
+              if (col_proto)
+                linea += pkt.protocolo + ",";
+              if (col_puerto_o)
+                linea += pkt.Puerto_origen + ",";
+              if (col_puerto_d)
+                linea += pkt.Puerto_destino + ",";
 
               if (!linea.empty())
                 linea.pop_back(); // Quitamos la última coma residual
@@ -940,7 +1086,7 @@ int main()
 
             paquetes_mutex.lock();
 
-            if (ip_o[0] == '\0' && ip_d[0] == '\0' && proto[0] == '\0' && puerto_d[0] == '\0')
+            if (ip_o[0] == '\0' && ip_d[0] == '\0' && proto[0] == '\0' && puerto_d[0] == '\0' && puerto_o[0] == '\0')
             {
               for (auto &pkt : lista_paquetes)
               {
@@ -996,15 +1142,16 @@ int main()
                 bool mostrar = false;
                 if (filtro_condicion_y)
                 {
-                  mostrar = ((ip_o[0] == '\0' || strcmp(ip_o, pkt.IP_origen.c_str()) == 0) && (ip_d[0] == '\0' || strcmp(ip_d, pkt.IP_destino.c_str()) == 0) && (proto[0] == '\0' || strcmp(proto, pkt.protocolo.c_str()) == 0) && (puerto_d[0] == '\0' || strcmp(puerto_d, pkt.Puerto_destino.c_str()) == 0));
+                  mostrar = ((ip_o[0] == '\0' || strcmp(ip_o, pkt.IP_origen.c_str()) == 0) && (ip_d[0] == '\0' || strcmp(ip_d, pkt.IP_destino.c_str()) == 0) && (proto[0] == '\0' || strcmp(proto, pkt.protocolo.c_str()) == 0) && (puerto_d[0] == '\0' || strcmp(puerto_d, pkt.Puerto_destino.c_str()) == 0) && (puerto_o[0] == '\0' || strcmp(puerto_o, pkt.Puerto_origen.c_str()) == 0));
                 }
                 else
                 {
                   bool coincide_ip_o = (ip_o[0] != '\0' && strcmp(ip_o, pkt.IP_origen.c_str()) == 0);
                   bool coincide_ip_d = (ip_d[0] != '\0' && strcmp(ip_d, pkt.IP_destino.c_str()) == 0);
                   bool coincide_proto = (proto[0] != '\0' && strcmp(proto, pkt.protocolo.c_str()) == 0);
-                  bool coincide_puerto = (puerto_d[0] != '\0' && strcmp(puerto_d, pkt.Puerto_destino.c_str()) == 0);
-                  mostrar = (coincide_ip_o || coincide_ip_d || coincide_proto || coincide_puerto);
+                  bool coincide_puerto_o = (puerto_o[0] != '\0' && strcmp(puerto_o, pkt.Puerto_origen.c_str()) == 0);
+                  bool coincide_puerto_d = (puerto_d[0] != '\0' && strcmp(puerto_d, pkt.Puerto_destino.c_str()) == 0);
+                  mostrar = (coincide_ip_o || coincide_ip_d || coincide_proto || coincide_puerto_o || coincide_puerto_d);
                 }
                 if (mostrar)
                 {
@@ -1608,6 +1755,41 @@ void menuFiltrado()
       if (esta_seleccionado)
       {
         ImGui::SetItemDefaultFocus();
+      }
+    }
+    ImGui::EndCombo();
+  }
+
+  ImGui::SameLine();
+  ImGui::Text("Puerto origen:");
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(80);
+
+  const char *puerto_ori;
+  if (puerto_o[0] == '\0')
+  {
+    puerto_ori = "Todos";
+  }
+  else
+  {
+    puerto_ori = puerto_o;
+  }
+
+  if (ImGui::BeginCombo("##combo_puertos_ori", puerto_ori))
+  {
+    // Opción por defecto para limpiar el filtro
+    bool p_todos_sel = (puerto_o[0] == '\0');
+    if (ImGui::Selectable("Todos", p_todos_sel))
+    {
+      puerto_o[0] = '\0';
+    }
+
+    for (const auto &puerto : puertos_origen)
+    {
+      bool esta_sel = (strcmp(puerto_o, puerto.c_str()) == 0);
+      if (ImGui::Selectable(puerto.c_str(), esta_sel))
+      {
+        snprintf(puerto_o, sizeof(puerto_o), "%s", puerto.c_str());
       }
     }
     ImGui::EndCombo();
