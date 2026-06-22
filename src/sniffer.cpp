@@ -666,10 +666,10 @@ int main()
       }
 
       ImGui::SameLine();
-      static bool mostrar_estadisticas = false;
+      static bool abrir_modal_stats = false; 
       if (ImGui::Button("Estadisticas", ImVec2(w_stats, 0)))
       {
-        mostrar_estadisticas = !mostrar_estadisticas;
+        abrir_modal_stats = true; 
       }
 
       ImGui::SameLine();
@@ -738,16 +738,30 @@ int main()
         abrir_modal_exportar = false;
       }
 
+     // --- DECLARACIÓN DE VARIABLES ESTÁTICAS PARA EL MODAL (Colócalas antes de los Checkbox) ---
       static bool col_id = true, col_tiempo = true, col_longitud = true;
       static bool col_ip_o = true, col_ip_d = true, col_proto = true;
       static bool col_puerto_o = true, col_puerto_d = true;
+      
+      // Búfer para almacenar el nombre que escriba el usuario
+      static char nombre_archivo[128] = "captura_trafico"; 
 
       if (ImGui::BeginPopupModal("Exportar a CSV", NULL, ImGuiWindowFlags_AlwaysAutoResize))
       {
-        ImGui::Text("Selecciona las columnas a exportar:");
+        ImGui::TextColored(ImVec4(0.0f, 0.75f, 1.0f, 1.0f), "Configuración del Archivo:");
+        ImGui::Spacing();
+
+        // Input de texto para que el usuario elija el nombre del archivo
+        ImGui::InputText("Nombre del archivo", nombre_archivo, IM_ARRAYSIZE(nombre_archivo));
+        ImGui::TextDisabled("Nota: Se guardará automáticamente en formato .csv");
+        
+        ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
-        ImGui::Checkbox("Numero de paquete", &col_id);
+
+        ImGui::Text("Selecciona las columnas a exportar:");
+        ImGui::Spacing();
+        ImGui::Checkbox("Número de paquete", &col_id);
         ImGui::Checkbox("Tiempo de vida", &col_tiempo);
         ImGui::Checkbox("Longitud (Bytes)", &col_longitud);
         ImGui::Checkbox("IP Origen", &col_ip_o);
@@ -755,59 +769,58 @@ int main()
         ImGui::Checkbox("Protocolo", &col_proto);
         ImGui::Checkbox("Puerto Origen", &col_puerto_o);
         ImGui::Checkbox("Puerto Destino", &col_puerto_d);
+        
+        ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
+
         if (ImGui::Button("Exportar", ImVec2(120, 0)))
         {
-          ofstream archivo("captura_trafico.csv");
+          // Validación del nombre de archivo y formato final
+          string nombre_final = nombre_archivo;
+          if (nombre_final.empty()) 
+          {
+             nombre_final = "captura_sin_nombre";
+          }
+          // Si el usuario no escribió la extensión .csv, se la agregamos de forma segura
+          if (nombre_final.length() < 4 || nombre_final.substr(nombre_final.length() - 4) != ".csv") 
+          {
+             nombre_final += ".csv";
+          }
+
+          ofstream archivo(nombre_final);
           if (archivo.is_open())
           {
             string cabecera = "";
-            if (col_id)
-              cabecera += "Numero,";
-            if (col_tiempo)
-              cabecera += "Tiempo,";
-            if (col_longitud)
-              cabecera += "Longitud,";
-            if (col_ip_o)
-              cabecera += "IP Origen,";
-            if (col_ip_d)
-              cabecera += "IP Destino,";
-            if (col_proto)
-              cabecera += "Protocolo,";
-            if (col_puerto_o)
-              cabecera += "Puerto Origen,";
-            if (col_puerto_d)
-              cabecera += "Puerto Destino,";
+            if (col_id)       cabecera += "Numero,";
+            if (col_tiempo)   cabecera += "Tiempo,";
+            if (col_longitud) cabecera += "Longitud,";
+            if (col_ip_o)     cabecera += "IP Origen,";
+            if (col_ip_d)     cabecera += "IP Destino,";
+            if (col_proto)    cabecera += "Protocolo,";
+            if (col_puerto_o) cabecera += "Puerto Origen,";
+            if (col_puerto_d) cabecera += "Puerto Destino,";
 
             if (!cabecera.empty())
               cabecera.pop_back();
             archivo << cabecera << "\n";
 
-            // Extraemos los datos paquete por paquete
-            paquetes_mutex.lock(); // Bloqueamos para leer seguro
+            // Extraemos los datos paquete por paquete de forma segura
+            paquetes_mutex.lock(); 
             for (const auto &pkt : lista_paquetes)
             {
               string linea = "";
-              if (col_id)
-                linea += to_string(pkt.id) + ",";
-              if (col_tiempo)
-                linea += pkt.tiempo_vida + ",";
-              if (col_longitud)
-                linea += to_string(pkt.longitud) + ",";
-              if (col_ip_o)
-                linea += pkt.IP_origen + ",";
-              if (col_ip_d)
-                linea += pkt.IP_destino + ",";
-              if (col_proto)
-                linea += pkt.protocolo + ",";
-              if (col_puerto_o)
-                linea += pkt.Puerto_origen + ",";
-              if (col_puerto_d)
-                linea += pkt.Puerto_destino + ",";
+              if (col_id)       linea += to_string(pkt.id) + ",";
+              if (col_tiempo)   linea += pkt.tiempo_vida + ",";
+              if (col_longitud) linea += to_string(pkt.longitud) + ",";
+              if (col_ip_o)     linea += pkt.IP_origen + ",";
+              if (col_ip_d)     linea += pkt.IP_destino + ",";
+              if (col_proto)    linea += pkt.protocolo + ",";
+              if (col_puerto_o) linea += pkt.Puerto_origen + ",";
+              if (col_puerto_d) linea += pkt.Puerto_destino + ",";
 
               if (!linea.empty())
-                linea.pop_back(); // Quitamos la última coma
+                linea.pop_back(); // Quitamos la última coma residual
               archivo << linea << "\n";
             }
             paquetes_mutex.unlock();
@@ -817,7 +830,7 @@ int main()
           ImGui::CloseCurrentPopup();
         }
 
-        ImGui::SameLine(); // botón cancelar a un lado
+        ImGui::SameLine(); // Botón cancelar a un lado
 
         if (ImGui::Button("Cancelar", ImVec2(120, 0)))
         {
@@ -828,10 +841,16 @@ int main()
       ImGui::End();
 
       // Panel de estadísticas
-      if (mostrar_estadisticas)
+      // --- Disparador del Modal de Estadísticas ---
+      if (abrir_modal_stats)
       {
-        ImGui::Begin("Gráfico de Trafico", &mostrar_estadisticas, ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::OpenPopup("Gráfico de Tráfico");
+        abrir_modal_stats = false;
+      }
 
+      // --- Estructura del Modal de Estadísticas ---
+      if (ImGui::BeginPopupModal("Gráfico de Tráfico", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+      {
         map<string, int> conteo_protocolos;
         int total_paquetes = 0;
 
@@ -843,14 +862,16 @@ int main()
         }
         paquetes_mutex.unlock();
 
-        // Dibujamos la interfaz
+        // Dibujamos la interfaz interna
         if (total_paquetes > 0)
         {
+          ImGui::TextColored(ImVec4(0.0f, 0.75f, 1.0f, 1.0f), "Métricas de Captura Actual:");
+          ImGui::Spacing();
           ImGui::Text("Total de paquetes en la red: %d", total_paquetes);
           ImGui::Separator();
           ImGui::Spacing();
 
-          // Recorremos nuestro mapa de resultados
+          // Recorremos el mapa de resultados
           for (auto const &[proto, count] : conteo_protocolos)
           {
             float porcentaje = (float)count / total_paquetes;
@@ -858,31 +879,38 @@ int main()
             // Texto alineado a la izquierda
             ImGui::Text("%s:", proto.c_str());
 
-            // Texto centrado
+            // Texto numérico centrado
             ImGui::SameLine(120.0f);
             ImGui::Text("%d (%.1f%%)", count, porcentaje * 100.0f);
 
             // Barra a la derecha
             ImGui::SameLine(240.0f);
 
-            // Usamos tu función para obtener el color del protocolo y le subimos la opacidad al 100% para la barra
+            // Obtener color con opacidad completa para la barra de progreso
             ImVec4 color_barra = ImGui::ColorConvertU32ToFloat4(ObtenerColorProtocolo(proto));
             color_barra.w = 1.0f;
 
             ImGui::PushStyleColor(ImGuiCol_PlotHistogram, color_barra);
-
-            // Dibujamos el rectángulo de la gráfica
             ImGui::ProgressBar(porcentaje, ImVec2(250.0f, 15.0f), "");
-
             ImGui::PopStyleColor();
           }
         }
         else
         {
-          ImGui::TextColored(ImVec4(0.8f, 0.2f, 0.2f, 1.0f), "Aun no hay trafico capturado para graficar.");
+          ImGui::TextColored(ImVec4(0.8f, 0.2f, 0.2f, 1.0f), "Aún no hay tráfico capturado para graficar.");
         }
 
-        ImGui::End();
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Botón inferior para cerrar el modal de forma limpia
+        if (ImGui::Button("Cerrar", ImVec2(120, 0)))
+        {
+          ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
       }
 
       // iniciamos la segunda seccion grafica donde se muestra todo el trafico capturado
