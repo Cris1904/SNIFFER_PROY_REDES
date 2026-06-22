@@ -94,6 +94,7 @@ void menuFiltrado();
 void StyleColorsUmisumi();
 DetallePaqueteCapas TraducirPaqueteACapas(const PaqueteInfo &pkt);
 void DibujarModoCapas(const DetallePaqueteCapas &paquete);
+void limpiarDatosCaptura();
 
 //---------------------------------INICIO DE LA FUNCIÓN PRINCIPAL--------------------------------------------------------------------
 int main()
@@ -719,6 +720,13 @@ int main()
           hilo_pcap.detach();
         }
         ImGui::PopStyleColor();
+
+        ImGui::SameLine();
+        if (ImGui::Button("Limpiar Tabla", ImVec2(150, 30)))
+        {
+          limpiarDatosCaptura();
+        }
+
         ImGui::Spacing();
         menuFiltrado();
       }
@@ -737,8 +745,14 @@ int main()
           }
         }
         ImGui::PopStyleColor();
-        ImGui::Spacing();
 
+        ImGui::SameLine();
+        if (ImGui::Button("Limpiar Tabla", ImVec2(150, 30)))
+        {
+          limpiarDatosCaptura();
+        }
+
+        ImGui::Spacing();
         menuFiltrado();
       }
       if (abrir_modal_exportar)
@@ -2069,4 +2083,21 @@ void DibujarModoCapas(const DetallePaqueteCapas &paquete)
   {
     ImGui::TextDisabled("Haz clic en cualquiera de los bloques de color apilados arriba para examinar su contenido.");
   }
+}
+
+void limpiarDatosCaptura()
+{
+  // Bloqueo de hilos para evitar conflictos con Npcap
+  paquetes_mutex.lock();
+
+  // Vacía la tabla principal
+  lista_paquetes.clear();
+  // Resetea el contador del mapa de animación
+  ultimo_id_procesado_esfera = 0;
+  esferas_activas.clear();
+  idPaqueteSeleccionado = -1;
+
+  id = 0;
+
+  paquetes_mutex.unlock();
 }
