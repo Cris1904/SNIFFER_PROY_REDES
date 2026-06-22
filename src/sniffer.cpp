@@ -1520,13 +1520,13 @@ void DibujarModoCapas(const DetallePaqueteCapas& paquete) {
     else if (capa_abierta == "Datos")   capa_actual = &paquete.datos;
 
     if (capa_actual) {
-      ImGui::TextColored(ImVec4(0.00f, 0.54f, 0.21f, 1.00f), "🔍 Explicacion Sencilla:");
+      ImGui::TextColored(ImVec4(0.00f, 0.54f, 0.21f, 1.00f), "Explicacion Sencilla:");
       ImGui::SameLine(); 
       ImGui::TextWrapped("%s", capa_actual->analogia);
       
       ImGui::Spacing();
       
-      ImGui::TextColored(ImVec4(0.15f, 0.45f, 0.85f, 1.00f), "💻 Datos Tecnicos Reales:");
+      ImGui::TextColored(ImVec4(0.15f, 0.45f, 0.85f, 1.00f), "Datos Tecnicos Reales:");
       ImGui::SameLine(); 
       ImGui::TextWrapped("%s", capa_actual->detalles_tecnicos.c_str());
     }

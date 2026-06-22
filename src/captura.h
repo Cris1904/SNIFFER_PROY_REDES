@@ -220,8 +220,6 @@ void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_cha
   // Para evitar warnings
   (VOID)(param);
 
-  // Se aumenta número de paquete
-  id++;
 
   // 1. Obtener la hora en que se obtuvo el paquete
   local_tv_sec = header->ts.tv_sec;
@@ -285,7 +283,8 @@ void packet_handler(u_char *param, const struct pcap_pkthdr *header, const u_cha
     // Guardar el vector después de agregar el paquete capturado
     {
       lock_guard<mutex> lock(paquetes_mutex);
-
+      // Se aumenta número de paquete
+      id++;
       if (ih->proto == 17) { // UDP
         protocolo = asignar_protocolo(sport, dport, ih->proto);
         PaqueteInfo nuevo_pkt(id, timestr, (int)header->len, src_ip, dst_ip, protocolo, src_puerto, dst_puerto, ttl_value, mac_src_str, mac_dst_str, pkt_data, (int)header->len, dominio, es_dns);      
