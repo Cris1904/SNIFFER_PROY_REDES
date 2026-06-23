@@ -24,8 +24,8 @@ using namespace std;
 struct EsferaViajera
 {
   float progreso;      // De 0.0 (PC) a 1.0 (Nube)
-  float velocidad;     // Multiplicador de velocidad por segundo
-  ImVec4 color;        // Color representativo del protocolo
+  float velocidad;     
+  ImVec4 color;        
   bool deUsuarioANube; // true = PC -> Nube (Salida), false = Nube -> PC (Entrada)
 };
 
@@ -35,10 +35,10 @@ int ultimo_id_procesado_esfera = -1; // Para saber qué paquetes ya se animaron
 // Estructura para almacenar información detallada de los adaptadores
 struct InterfazRedInfo
 {
-  string nombre_original; // Guarda el identificador interno de Windows (\Device\NPF_{GUID})
-  string descripcion;     // Guarda la descripción cruda de Npcap (Realtek PCIe GbE...)
+  string nombre_original; // Guarda el identificador interno 
+  string descripcion;     // Guarda la descripción de Npcap 
   string guid;            // Identificador único extraído para buscar su nombre en el registro
-  string nombre_amigable; // Aquí guardaremos el nombre amigable para el usuario (Wi-Fi)
+  string nombre_amigable; // Aquí guardaremos el nombre para el usuario 
 };
 
 // Estructuras para el visualizador de capas
@@ -52,10 +52,10 @@ struct CapaTraducida
 
 struct DetallePaqueteCapas
 {
-  CapaTraducida enlace;     // Capa 2: Ethernet
-  CapaTraducida red;        // Capa 3: IP
-  CapaTraducida transporte; // Capa 4: TCP / UDP
-  CapaTraducida datos;      // Capa 7: Payload / Aplicación
+  CapaTraducida enlace;     
+  CapaTraducida red;       
+  CapaTraducida transporte; 
+  CapaTraducida datos;      
 };
 
 // ---- Estados del programa (ventanas) ----
@@ -109,7 +109,7 @@ int main()
   const char *glsl_version = "#version 130";
   GLFWwindow *ventana = nullptr;
 
-  // --- INTENTO 1: Configuración Moderna (OpenGL 3.3) ---
+  // INTENTO 1 de openGL
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -117,7 +117,7 @@ int main()
 
   ventana = glfwCreateWindow(1280, 720, "Sniffer - Proyecto de Redes", NULL, NULL);
 
-  // --- INTENTO 2: Modo de compatibilidad para Máquina Virtual (OpenGL 3.0) ---
+  // INTENTO 2
   if (ventana == NULL)
   {
     printf("Aviso: La VM no soporta OpenGL 3.3. Intentando Modo Compartibilidad (3.0)...\n");
@@ -128,7 +128,7 @@ int main()
     ventana = glfwCreateWindow(1280, 720, "Sniffer - Proyecto de Redes (Modo Compartibilidad)", NULL, NULL);
   }
 
-  // --- INTENTO 3: Modo seguro (Dejar que el driver básico de la maquina decida) ---
+  // INTENTO 3
   if (ventana == NULL)
   {
     printf("Aviso: Falló OpenGL 3.0. Intentando el perfil más básico de Windows...\n");
@@ -136,7 +136,6 @@ int main()
     ventana = glfwCreateWindow(1280, 720, "Sniffer - Proyecto de Redes (Modo Seguro)", NULL, NULL);
   }
 
-  // Si ninguno de los 3 intentos funcionó
   if (ventana == NULL)
   {
     printf("Error Crítico: No se pudo crear la ventana en ningún modo gráfico.\n");
@@ -248,7 +247,7 @@ int main()
     listaInterfaces.push_back(err_info);
   }
 
-  int interfazSeleccionada = 0; // definimos el indice de la tarjeta de red elegida por default (la primera de la lista)
+  int interfazSeleccionada = 0; // definimos el indice de la tarjeta de red 
 
   // Bucle principal del analizador
   while (!glfwWindowShouldClose(ventana))
@@ -320,7 +319,7 @@ int main()
         ImGui::EndMainMenuBar();
       }
 
-      // Si la palomita está marcada, ImGui dibuja su ventana de configuración
+      // Si la palomita está marcada se pone el editor
       if (mostrar_editor_estilos)
       {
         ImGui::Begin("Editor de Estilos", &mostrar_editor_estilos);
@@ -334,7 +333,7 @@ int main()
     // Definimos la logica de las ventanas
     if (estado_actual == PANTALLA_INICIO)
     {
-      // --- PANTALLA DE INICIO ---
+      // PANTALLA DE INICIO
       ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
       ImGui::SetNextWindowSize(viewportSize, ImGuiCond_Always);
 
@@ -378,7 +377,7 @@ int main()
 
       // Botón para Menú de Ayuda
       ImGui::SetCursorPosX((windowWidth - btnWidth) * 0.5f);
-      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0.4f, 1.0f)); // Gris
+      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.4f, 0.4f, 0.4f, 1.0f));
       if (ImGui::Button("Menu de Ayuda", ImVec2(btnWidth, btnHeight)))
       {
         estado_anterior = PANTALLA_INICIO; // Guardamos que venimos del inicio
@@ -457,10 +456,10 @@ int main()
       ImGui::Separator();
       ImGui::Spacing();
 
-      // --- SISTEMA DE PESTAÑAS PARA ORGANIZAR LA AYUDA ---
+      // SISTEMA DE PESTAÑAS PARA LA AYUDA
       if (ImGui::BeginTabBar("TabsAyuda"))
       {
-        // PESTAÑA 1: ¿CÓMO USAR EL PROGRAMA?
+        // PESTAÑA 1
         if (ImGui::BeginTabItem("Uso del Sniffer"))
         {
           ImGui::TextColored(ImVec4(0.0f, 0.75f, 1.0f, 1.0f), "Guía de Operación y Arquitectura del Sistema:");
@@ -480,7 +479,7 @@ int main()
           ImGui::EndTabItem();
         }
 
-        // PESTAÑA 2: DICCIONARIO DE PROTOCOLOS (Sincronizado con tus colores reales)
+        // PESTAÑA 2
         if (ImGui::BeginTabItem("Códigos de Colores y Protocolos"))
         {
           ImGui::Text("Este sniffer clasifica los paquetes por color para facilitar su análisis visual rápido:");
@@ -492,7 +491,7 @@ int main()
             ImGui::TableSetupColumn("Protocolo", ImGuiTableColumnFlags_WidthFixed, 250.0f);
             ImGui::TableSetupColumn("Descripción y Caso de Uso");
 
-            // --- FILA 1: TCP ---
+            // FILA 1
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
             // Extraemos el color exacto de tu función, pero forzamos opacidad 1.0f para que el cuadro indicador se note claro
@@ -504,7 +503,7 @@ int main()
             ImGui::TextWrapped("Protocolo orientado a conexión. Es confiable, maneja control de flujo y asegura que los datos lleguen sin pérdidas ni desorden.");
             ImGui::Separator();
 
-            // --- FILA 2: UDP ---
+            // FILA 2
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
             ImVec4 color_udp = ImGui::ColorConvertU32ToFloat4(ObtenerColorProtocolo("UDP"));
@@ -515,7 +514,7 @@ int main()
             ImGui::TextWrapped("Protocolo ligero no orientado a conexión. Ultra veloz al no verificar errores ni retransmitir. Ideal para flujos que toleran pérdidas.");
             ImGui::Separator();
 
-            // --- FILA 3: DNS ---
+            // FILA 3
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
             ImVec4 color_dns = ImGui::ColorConvertU32ToFloat4(ObtenerColorProtocolo("DNS"));
@@ -526,7 +525,7 @@ int main()
             ImGui::TextWrapped("El directorio de Internet. Traduce nombres de dominio legibles (como google.com) a las direcciones IP numéricas que los routers entienden.");
             ImGui::Separator();
 
-            // --- FILA 4: HTTP ---
+            // FILA 4
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
             ImVec4 color_http = ImGui::ColorConvertU32ToFloat4(ObtenerColorProtocolo("HTTP"));
@@ -537,7 +536,7 @@ int main()
             ImGui::TextWrapped("Protocolo base de la World Wide Web para la transferencia de páginas HTML, imágenes y peticiones al servidor en texto plano (no seguro).");
             ImGui::Separator();
 
-            // --- FILA 5: HTTPS ---
+            // FILA 5
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
             ImVec4 color_https = ImGui::ColorConvertU32ToFloat4(ObtenerColorProtocolo("HTTPS"));
@@ -548,7 +547,7 @@ int main()
             ImGui::TextWrapped("Versión cifrada y segura de HTTP. Utiliza TLS/SSL para proteger las credenciales, datos bancarios y cookies frente a interceptaciones.");
             ImGui::Separator();
 
-            // --- FILA 6: OTROS ---
+            // FILA 6
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
             ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "[■] Otros / Desconocidos");
@@ -562,7 +561,7 @@ int main()
           ImGui::EndTabItem();
         }
 
-        // PESTAÑA 3: ANALOGÍA DE LAS CAPAS DE RED (Para tus reportes académicos)
+        // PESTAÑA 3
         if (ImGui::BeginTabItem("Modelo de Capas (Explicación)"))
         {
           ImGui::TextWrapped("Para entender cómo se empaquetan los datos, imagina el envío de una carta tradicional:");
@@ -601,7 +600,7 @@ int main()
     }
     else if (estado_actual == SNIFFER)
     {
-      // --- PANTALLA PRINCIPAL DEL SNIFFER ---
+      // PANTALLA PRINCIPAL DEL SNIFFER
 
       float menu_offset = 20.0f;
 
@@ -761,7 +760,7 @@ int main()
         abrir_modal_exportar = false;
       }
 
-      // --- DECLARACIÓN DE VARIABLES ESTÁTICAS PARA EL MODAL (Colócalas antes de los Checkbox) ---
+      // DECLARACIÓN DE VARIABLES ESTÁTICAS PARA EL MODAL
       static bool col_id = true, col_tiempo = true, col_longitud = true;
       static bool col_ip_o = true, col_ip_d = true, col_proto = true;
       static bool col_puerto_o = true, col_puerto_d = true;
@@ -769,7 +768,7 @@ int main()
       // Búfer para almacenar el nombre que escriba el usuario
       static char nombre_archivo[128] = "captura_trafico";
 
-      // --- Disparador del Modal de Excel ---
+      // Modal de Excel
       if (abrir_modal_excel)
       {
         ImGui::OpenPopup("Exportar a Excel");
@@ -782,7 +781,7 @@ int main()
       static bool ex_puerto_o = true, ex_puerto_d = true;
       static char nombre_archivo_excel[128] = "reporte_trafico";
 
-      // --- Estructura del Modal de Excel ---
+      // Estructura del Modal de Excel
       if (ImGui::BeginPopupModal("Exportar a Excel", NULL, ImGuiWindowFlags_AlwaysAutoResize))
       {
         ImGui::TextColored(ImVec4(0.2f, 0.8f, 0.2f, 1.0f), "Exportación a Formato Excel (.xlsx):");
@@ -1001,14 +1000,14 @@ int main()
       ImGui::End();
 
       // Panel de estadísticas
-      // --- Disparador del Modal de Estadísticas ---
+      // Disparador del Modal de Estadísticas
       if (abrir_modal_stats)
       {
         ImGui::OpenPopup("Gráfico de Tráfico");
         abrir_modal_stats = false;
       }
 
-      // --- Estructura del Modal de Estadísticas ---
+      // Estructura del Modal de Estadísticas
       if (ImGui::BeginPopupModal("Gráfico de Tráfico", NULL, ImGuiWindowFlags_AlwaysAutoResize))
       {
         map<string, int> conteo_protocolos;
@@ -1080,9 +1079,7 @@ int main()
 
       if (ImGui::BeginTabBar("TabsControlTrafico"))
       {
-        // -------------------------------------------------------------------------------
-        // PESTAÑA A: TABLA DE PAQUETES (Tu código original intacto)
-        // -------------------------------------------------------------------------------
+        // PESTAÑA DE LA TABLA DE PAQUETES 
         if (ImGui::BeginTabItem("Vista de Tabla"))
         {
           if (ImGui::BeginTable("TablaPaquetes", 8, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY))
@@ -1208,12 +1205,10 @@ int main()
           ImGui::EndTabItem();
         }
 
-        // -------------------------------------------------------------------------------
-        // PESTAÑA B: EL MAPA EN TIEMPO REAL (Traffic Animation Canvas)
-        // -------------------------------------------------------------------------------
+        // PESTAÑA DEL MAPA EN TIEMPO REAL
         if (ImGui::BeginTabItem("Mapa de Paquetes Viajeros"))
         {
-          // 1. Sincronizar hilos de manera segura: Leer nuevos paquetes y crear esferas viajeras
+          // Sincronizar hilos de manera segura: Leer nuevos paquetes y crear esferas viajeras
           paquetes_mutex.lock();
           for (const auto &pkt : lista_paquetes)
           {
@@ -1247,7 +1242,7 @@ int main()
           }
           paquetes_mutex.unlock();
 
-          // 2. Preparar lienzo de dibujo técnico de ImGui
+          // Preparar lienzo de dibujo 
           ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
           ImVec2 canvas_size = ImGui::GetContentRegionAvail();
           if (canvas_size.y < 100.0f)
@@ -1263,21 +1258,21 @@ int main()
           draw_list->AddRectFilled(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), color_fondo_estilo, 6.0f);
           draw_list->AddRect(canvas_pos, ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y), ImGui::GetColorU32(ImGuiCol_Border), 6.0f);
 
-          // 3. Posiciones de nodos (Computadora e Internet)
+          // Posiciones de nodos (Computadora e Internet)
           ImVec2 pc_pos = ImVec2(canvas_pos.x + 120.0f, canvas_pos.y + (canvas_size.y * 0.5f));
           ImVec2 nube_pos = ImVec2(canvas_pos.x + canvas_size.x - 120.0f, canvas_pos.y + (canvas_size.y * 0.5f));
 
           // Enlace de datos de fondo
           draw_list->AddLine(pc_pos, nube_pos, IM_COL32(60, 65, 75, 255), 2.0f);
 
-          // 4. Dibujar Elemento Visual de la Computadora (Tu PC)
+          // Dibujar Elemento Visual de la Computadora (Tu PC)
           draw_list->AddRectFilled(ImVec2(pc_pos.x - 22, pc_pos.y - 14), ImVec2(pc_pos.x + 22, pc_pos.y + 10), IM_COL32(0, 180, 216, 255), 4.0f); // Monitor
           draw_list->AddRect(ImVec2(pc_pos.x - 22, pc_pos.y - 14), ImVec2(pc_pos.x + 22, pc_pos.y + 10), IM_COL32(255, 255, 255, 200), 4.0f, 0, 1.5f);
           draw_list->AddTriangleFilled(ImVec2(pc_pos.x - 10, pc_pos.y + 20), ImVec2(pc_pos.x + 10, pc_pos.y + 20), ImVec2(pc_pos.x, pc_pos.y + 10), IM_COL32(100, 110, 120, 255)); // Base
           draw_list->AddRectFilled(ImVec2(pc_pos.x - 25, pc_pos.y + 20), ImVec2(pc_pos.x + 25, pc_pos.y + 24), IM_COL32(80, 90, 100, 255), 2.0f);                                  // Teclado
           draw_list->AddText(ImVec2(pc_pos.x - 24, pc_pos.y - 32), ImGui::GetColorU32(ImGuiCol_Text), "LOCAL PC");
 
-          // 5. Dibujar Elemento Visual de la Nube (Internet / Remoto)
+          // Dibujar Elemento Visual de la Nube (Internet / Remoto)
           draw_list->AddCircleFilled(ImVec2(nube_pos.x, nube_pos.y), 16.0f, IM_COL32(114, 9, 183, 255));
           draw_list->AddCircleFilled(ImVec2(nube_pos.x - 14, nube_pos.y + 6), 12.0f, IM_COL32(114, 9, 183, 255));
           draw_list->AddCircleFilled(ImVec2(nube_pos.x + 14, nube_pos.y + 6), 12.0f, IM_COL32(114, 9, 183, 255));
@@ -1285,7 +1280,7 @@ int main()
           draw_list->AddCircleFilled(ImVec2(nube_pos.x + 7, nube_pos.y - 10), 13.0f, IM_COL32(114, 9, 183, 255));
           draw_list->AddText(ImVec2(nube_pos.x - 28, nube_pos.y - 32), ImGui::GetColorU32(ImGuiCol_Text), "INTERNET");
 
-          // 6. Actualización cinemática y renderizado del paso de las esferas
+          // Actualización cinemática y renderizado del paso de las esferas
           float deltaTime = ImGui::GetIO().DeltaTime;
 
           for (auto it = esferas_activas.begin(); it != esferas_activas.end();)
@@ -1484,7 +1479,7 @@ string extraerGUID(const string &nombre_npcap)
   return "";
 }
 
-//--Funcion para leer el "Registro de Windows" y obtener el nombre de la red ("Wi-Fi", "Ethernet") usando el GUID--
+// Funcion para leer el "Registro de Windows" y obtener el nombre de la red ("Wi-Fi", "Ethernet") usando el GUID
 string obtenerNombreConexion(const string &guid)
 {
   if (guid.empty())
@@ -1917,12 +1912,12 @@ void StyleColorsUmisumi()
   colors[ImGuiCol_NavCursor] = ImVec4(0.26f, 0.98f, 0.50f, 0.80f);
 }
 
-// --- LOGICA DE TRADUCCIÓN METAFÓRICA (MODO RAYOS X) ---
+// --- LOGICA DE TRADUCCIÓN  ---
 DetallePaqueteCapas TraducirPaqueteACapas(const PaqueteInfo &pkt)
 {
   DetallePaqueteCapas xray;
 
-  // 1. CAPA DE ENLACE (Ethernet - El Camión)
+  // CAPA DE ENLACE (Ethernet - El Camión)
   xray.enlace.nombre = "Enlace";
   xray.enlace.color = ImVec4(0.42f, 0.26f, 0.20f, 1.00f); // Tono Madera/Camión
   xray.enlace.analogia = "Es el camion fisico de mensajeria (como DHL o Estafeta) que mueve los datos desde la tarjeta de red de tu computadora hasta el modem de tu casa.";
@@ -1932,7 +1927,7 @@ DetallePaqueteCapas TraducirPaqueteACapas(const PaqueteInfo &pkt)
            pkt.mac_origen.c_str(), pkt.mac_destino.c_str());
   xray.enlace.detalles_tecnicos = buf_enlace;
 
-  // 2. CAPA DE RED (IP - El Sobre Postal)
+  // CAPA DE RED (IP - El Sobre Postal)
   xray.red.nombre = "Red";
   xray.red.color = ImVec4(0.20f, 0.35f, 0.55f, 1.00f); // Tono Azul
 
@@ -1942,7 +1937,7 @@ DetallePaqueteCapas TraducirPaqueteACapas(const PaqueteInfo &pkt)
            pkt.protocolo.c_str(), pkt.IP_origen.c_str(), pkt.IP_destino.c_str(), pkt.ttl);
   xray.red.detalles_tecnicos = buf_red;
 
-  // 3. CAPA DE TRANSPORTE (TCP / UDP - Tipo de Envío)
+  // CAPA DE TRANSPORTE (TCP / UDP - Tipo de Envío)
   xray.transporte.nombre = "Transporte";
   xray.transporte.color = ImVec4(0.60f, 0.42f, 0.15f, 1.00f); // Tono Amarillo
 
@@ -1966,7 +1961,7 @@ DetallePaqueteCapas TraducirPaqueteACapas(const PaqueteInfo &pkt)
     xray.transporte.detalles_tecnicos = "Capa de Transporte Directa o Mensaje Especial.";
   }
 
-  // 4. CAPA DE APLICACIÓN (Datos - La Carta Interna)
+  // CAPA DE APLICACIÓN (Datos - La Carta Interna)
   xray.datos.nombre = "Datos";
   xray.datos.color = ImVec4(0.14f, 0.55f, 0.26f, 1.00f); // Tono Verde
   xray.datos.analogia = "¡La carta que va adentro de todo! Este es el mensaje real que tus aplicaciones (como tu navegador, Discord, Minecraft o Spotify) quieren transmitir.";
@@ -1978,7 +1973,7 @@ DetallePaqueteCapas TraducirPaqueteACapas(const PaqueteInfo &pkt)
   return xray;
 }
 
-// --- INTERFAZ DE RENDERS VISUALES EN MATRIOSHKA ---
+// INTERFAZ DE RENDERS VISUALES EN MATRIOSHKA
 void DibujarModoCapas(const DetallePaqueteCapas &paquete)
 {
   ImGui::TextUnformatted("Modo Capas");
