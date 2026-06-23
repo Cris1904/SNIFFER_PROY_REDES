@@ -99,7 +99,7 @@ void limpiarDatosCaptura();
 //---------------------------------INICIO DE LA FUNCIÓN PRINCIPAL--------------------------------------------------------------------
 int main()
 {
-
+  FreeConsole();
   if (!glfwInit())
   {
     printf("Error: No se pudo inicializar GLFW.\n");
